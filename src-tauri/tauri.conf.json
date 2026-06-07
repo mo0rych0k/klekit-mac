@@ -39,7 +39,7 @@
       "icons/icon.icns"
     ],
     "resources": [
-      "../models/ggml-small.bin",
+      "../models/ggml-large-v3-turbo.bin",
       "../models/gemma-2-2b-it-Q6_K.gguf",
       "../bin/llm_refiner"
     ],

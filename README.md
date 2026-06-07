@@ -14,7 +14,7 @@ KleKit lets you dictate text into any input field on your machine — no interne
 - ⚡ **Fast** — ~1 second model spin-up on M-series chips and modern hardware.
 - 🧠 **Smart refinement** — Gemma 2 2B fixes grammar, formats technical terms, and cleans up speech artifacts.
 - 🎯 **Works anywhere** — pastes text into any active input field (IDE, browser, Slack, Notes…).
-- 💤 **Zero idle RAM** — models unload after 1 minute of inactivity (20–30 MB at rest).
+- 💤 **Zero idle RAM** — models unload after 10 seconds of inactivity (20–30 MB at rest).
 - 🌍 **Multi-language** — transcribes in your language, optionally translates to English.
 
 ---
@@ -43,7 +43,7 @@ The core coordinator for this workflow is the [VoiceAssistantEngine](file:///Use
 - [Rust](https://rustup.rs/) 1.77+
 - [Tauri CLI](https://tauri.app/start/prerequisites/) v2
 - Model files (stored locally, **not** included in this repo):
-  - `models/ggml-small.bin` — Whisper small model ([download](https://huggingface.co/ggerganov/whisper.cpp))
+  - `models/ggml-large-v3-turbo.bin` — Whisper large-v3-turbo model ([download](https://huggingface.co/ggerganov/whisper.cpp))
   - `models/gemma-2-2b-it-Q6_K.gguf` — Gemma 2 2B ([download](https://huggingface.co/bartowski/gemma-2-2b-it-GGUF))
 
 > [!NOTE]
@@ -64,9 +64,9 @@ cd klekit-mac
 ```bash
 mkdir -p models
 
-# Whisper small (~244 MB)
-curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin \
-  -o models/ggml-small.bin
+# Whisper large-v3-turbo (~1.5 GB)
+curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin \
+  -o models/ggml-large-v3-turbo.bin
 
 # Gemma 2 2B Q6_K (~2 GB)
 curl -L https://bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q6_K.gguf \
@@ -98,7 +98,7 @@ Settings are stored at the user's config directory (e.g., `~/Library/Application
   "vocabulary_hint": "",
   "llm_enabled": true,
   "llm_translate_to_english": false,
-  "whisper_model_path": "models/ggml-small.bin",
+  "whisper_model_path": "models/ggml-large-v3-turbo.bin",
   "llm_model_path": "models/gemma-2-2b-it-Q6_K.gguf"
 }
 ```
@@ -119,7 +119,7 @@ KleKit utilizes a "Zero-Memory Idle" state:
 | Transcribing (Whisper loaded) | ~500 MB |
 | Refining (Gemma loaded) | ~2–3 GB (Metal/VRAM/DirectX) |
 
-Models are **automatically unloaded** after **1 minute** of inactivity to preserve system memory.
+Models are **automatically unloaded** after **10 seconds** of inactivity to preserve system memory.
 
 ---
 
