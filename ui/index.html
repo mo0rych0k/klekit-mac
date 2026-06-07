@@ -1,0 +1,2919 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KleKit Workspace</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-darker: #07080d;
+            --bg-dark: #0b0c15;
+            --bg-card: #111322;
+            --bg-input: #17192b;
+            --border-color: #1e223c;
+            --border-hover: #2e345c;
+            --text-primary: #ffffff;
+            --text-secondary: #8f92a1;
+            --accent-purple: #8b5cf6;
+            --accent-purple-glow: rgba(139, 92, 246, 0.15);
+            --accent-purple-border: rgba(139, 92, 246, 0.3);
+            --accent-green: #10b981;
+            --accent-green-glow: rgba(16, 185, 129, 0.15);
+            --accent-red: #ef4444;
+            --accent-red-glow: rgba(239, 68, 68, 0.15);
+            --accent-warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-darker);
+            color: var(--text-primary);
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* ─── Main App Layout ─── */
+        .app-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--bg-dark);
+            overflow: hidden;
+        }
+
+        /* ─── Left Sidebar ─── */
+        .sidebar {
+            width: 22%;
+            min-width: 180px;
+            max-width: 280px;
+            background-color: #0f111e;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 24px 16px;
+            flex-shrink: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+
+        .brand-icon {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            border-radius: 6px;
+        }
+
+        .brand-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #a855f7, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-grow: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s ease;
+        }
+
+        .nav-item:hover {
+            background: #181b30;
+            color: #ffffff;
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, var(--accent-purple-glow), rgba(99, 102, 241, 0.15));
+            border: 1px solid var(--accent-purple-border);
+            color: #ffffff;
+        }
+
+        .active-agents-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 12px;
+            max-height: 180px;
+            overflow-y: auto;
+            scrollbar-width: none;
+        }
+
+        .active-agents-sidebar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .active-agents-title {
+            font-size: 10px;
+            color: var(--text-secondary);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .active-agent-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            padding: 6px 0;
+        }
+
+        .agent-name-span {
+            flex-grow: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .agent-hotkey-span {
+            font-weight: 800;
+            color: var(--text-secondary);
+            font-family: monospace;
+            flex-shrink: 0;
+        }
+
+        .agent-status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #4b526d;
+            box-shadow: 0 0 6px rgba(75, 82, 109, 0.4);
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .agent-status-dot.idle {
+            background-color: #4b526d;
+            box-shadow: 0 0 6px rgba(75, 82, 109, 0.4);
+        }
+
+        .agent-status-dot.listening {
+            background-color: #10b981;
+            box-shadow: 0 0 12px #10b981;
+            animation: pulse-dot-green 1.2s infinite alternate;
+        }
+
+        .agent-status-dot.transcribing {
+            background-color: #f59e0b;
+            box-shadow: 0 0 12px #f59e0b;
+            animation: pulse-dot-yellow 1.2s infinite alternate;
+        }
+
+        .agent-status-dot.refining {
+            background-color: #6366f1;
+            box-shadow: 0 0 12px #6366f1;
+            animation: pulse-dot-purple 1.2s infinite alternate;
+        }
+
+        .agent-status-dot.success {
+            background-color: #06b6d4;
+            box-shadow: 0 0 16px #06b6d4;
+            animation: flash-dot-cyan 0.5s ease-in-out;
+        }
+
+        /* ─── Main Content Pane ─── */
+        .main-content {
+            flex-grow: 1;
+            background-color: var(--bg-darker);
+            padding: 24px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .tab-pane {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .tab-pane.active {
+            display: flex;
+        }
+
+        .pane-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-shrink: 0;
+        }
+
+        .pane-header h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* ─── History View ─── */
+        .history-list-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-right: 4px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) var(--bg-darker);
+        }
+
+        .history-item {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .history-item:hover {
+            border-color: var(--accent-purple);
+            background-color: var(--bg-input);
+            transform: translateY(-1px);
+        }
+
+        .history-item-content {
+            flex-grow: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .history-item-date {
+            font-size: 10px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .history-item-text {
+            font-size: 12px;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+
+        .history-item-row-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+            align-items: center;
+        }
+
+        .row-action-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 6px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .row-action-btn.copy-btn {
+            color: var(--accent-green);
+        }
+
+        .row-action-btn.copy-btn:hover {
+            background: rgba(16, 185, 129, 0.15);
+            transform: scale(1.08);
+        }
+
+        .row-action-btn.delete-btn {
+            color: var(--accent-red);
+        }
+
+        .row-action-btn.delete-btn:hover {
+            background: rgba(239, 68, 68, 0.15);
+            transform: scale(1.08);
+        }
+
+        .close-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            line-height: 1;
+            transition: color 0.2s ease;
+        }
+
+        .close-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .copy-item-btn {
+            background: transparent;
+            border: none;
+            color: var(--accent-green);
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .copy-item-btn:hover {
+            background: rgba(16, 185, 129, 0.15);
+            transform: scale(1.02);
+        }
+
+        .delete-item-btn {
+            background: transparent;
+            border: none;
+            color: var(--accent-red);
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .delete-item-btn:hover {
+            background: rgba(239, 68, 68, 0.15);
+            transform: scale(1.02);
+        }
+
+        /* Modal specific sizing for full text review */
+        .history-detail-content {
+            width: 580px;
+            max-width: 90%;
+            height: 460px;
+            max-height: 80%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-detail-body {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-top: 10px;
+            padding-right: 6px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) var(--bg-card);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .history-detail-section {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .history-detail-text {
+            font-size: 13px;
+            color: var(--text-primary);
+            line-height: 1.5;
+            background: var(--bg-darker);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .history-detail-text.raw {
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .label-badge {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            width: fit-content;
+        }
+
+        .label-badge.raw {
+            color: #6366f1;
+        }
+
+        .label-badge.refined {
+            color: var(--accent-green);
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            color: var(--text-secondary);
+            gap: 12px;
+        }
+
+        .empty-icon {
+            font-size: 40px;
+            opacity: 0.5;
+        }
+
+        .empty-sub {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        /* ─── Multi-Agent View ─── */
+        .agents-layout {
+            display: flex;
+            flex-grow: 1;
+            gap: 16px;
+            height: calc(100% - 46px);
+            overflow: hidden;
+        }
+
+        .agents-sidebar {
+            flex: 1;
+            min-width: 140px;
+            max-width: 240px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-right: 2px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) var(--bg-darker);
+        }
+
+        .agent-list-item {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .agent-list-item:hover {
+            border-color: var(--border-hover);
+            background-color: #151829;
+        }
+
+        .agent-list-item.selected {
+            border-color: var(--accent-purple);
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(99, 102, 241, 0.1));
+        }
+
+        /* Semantic State Colors */
+        .agent-list-item.listening {
+            animation: pulse-border-green 1.2s infinite alternate;
+        }
+
+        .agent-list-item.transcribing {
+            animation: pulse-border-yellow 1.2s infinite alternate;
+        }
+
+        .agent-list-item.refining {
+            animation: pulse-border-purple 1.2s infinite alternate;
+        }
+
+        .agent-list-item.success {
+            border-color: #3b82f6;
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+        }
+
+        @keyframes pulse-border-green {
+            0% {
+                border-color: rgba(16, 185, 129, 0.4);
+                box-shadow: 0 0 4px rgba(16, 185, 129, 0.1);
+            }
+
+            100% {
+                border-color: rgba(16, 185, 129, 1);
+                box-shadow: 0 0 16px rgba(16, 185, 129, 0.4);
+            }
+        }
+
+        @keyframes pulse-border-yellow {
+            0% {
+                border-color: rgba(245, 158, 11, 0.4);
+                box-shadow: 0 0 4px rgba(245, 158, 11, 0.1);
+            }
+
+            100% {
+                border-color: rgba(245, 158, 11, 1);
+                box-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
+            }
+        }
+
+        @keyframes pulse-border-purple {
+            0% {
+                border-color: rgba(139, 92, 246, 0.4);
+                box-shadow: 0 0 4px rgba(139, 92, 246, 0.1);
+            }
+
+            100% {
+                border-color: rgba(139, 92, 246, 1);
+                box-shadow: 0 0 16px rgba(139, 92, 246, 0.4);
+            }
+        }
+
+        .agent-list-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding-right: 16px;
+        }
+
+        .agent-list-hotkey {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--accent-purple);
+            background-color: rgba(139, 92, 246, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            width: fit-content;
+        }
+
+        .agent-list-status {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .agent-list-item.listening .agent-list-status {
+            color: var(--accent-green);
+        }
+
+        .agent-list-item.transcribing .agent-list-status {
+            color: var(--accent-warning);
+        }
+
+        .agent-list-item.refining .agent-list-status {
+            color: var(--accent-purple);
+        }
+
+        .agent-list-item.success .agent-list-status {
+            color: #3b82f6;
+        }
+
+        .delete-agent-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: transparent;
+            border: none;
+            color: var(--accent-red);
+            cursor: pointer;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .agent-list-item:hover .delete-agent-btn {
+            opacity: 0.8;
+        }
+
+        .delete-agent-btn:hover {
+            opacity: 1 !important;
+            transform: scale(1.1);
+        }
+
+        .agent-detail-form {
+            flex-grow: 1;
+            min-width: 280px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) var(--bg-card);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+
+        input[type="text"],
+        select,
+        textarea {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            outline: none;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        input[type="text"]:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--accent-purple);
+            background: #1e1535;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 52px;
+        }
+
+        /* ─── Custom Preset Selector Trigger ─── */
+        .preset-selector-trigger {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .preset-selector-trigger:hover {
+            border-color: var(--accent-purple);
+            background: #181b30;
+        }
+
+        .preset-trigger-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .preset-trigger-text {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            text-align: left;
+        }
+
+        .preset-trigger-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .preset-trigger-desc {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .preset-trigger-arrow {
+            font-size: 10px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        /* ─── Buttons ─── */
+        .btn {
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 13px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-purple), #6366f1);
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-primary:disabled {
+            background: #252840;
+            color: var(--text-secondary);
+            cursor: not-allowed;
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary {
+            background-color: #1e223c;
+            border: 1px solid #282c4e;
+            color: #ffffff;
+        }
+
+        .btn-secondary:hover {
+            background-color: #282c4e;
+        }
+
+        .btn-danger {
+            background-color: var(--accent-red);
+            color: #ffffff;
+        }
+
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+
+        .hotkey-single-input-container {
+            width: 100%;
+        }
+
+        .hotkey-hint {
+            display: none;
+            align-items: center;
+            gap: 5px;
+            margin-top: 5px;
+            padding: 6px 10px;
+            border-radius: 7px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent-red);
+            line-height: 1.4;
+            animation: hint-fadein 0.15s ease;
+        }
+
+        .hotkey-hint.visible {
+            display: flex;
+        }
+
+        @keyframes hint-fadein {
+            from {
+                opacity: 0;
+                transform: translateY(-4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #agent-hotkey-input {
+            width: 100%;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 14px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 700;
+            outline: none;
+            letter-spacing: 0.5px;
+        }
+
+        #agent-hotkey-input:hover {
+            border-color: var(--border-hover);
+            background-color: #1a1d35;
+        }
+
+        #agent-hotkey-input.listening {
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
+            background-color: #1c1a35;
+            color: var(--accent-purple);
+            animation: pulse-border 1.5s infinite alternate;
+        }
+
+        @keyframes pulse-border {
+            0% {
+                border-color: rgba(139, 92, 246, 0.5);
+            }
+
+            100% {
+                border-color: rgba(139, 92, 246, 1);
+            }
+        }
+
+        .save-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 6px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .save-feedback {
+            font-size: 11px;
+            font-weight: 700;
+            min-height: 18px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .save-feedback.success {
+            color: var(--accent-green);
+        }
+
+        .save-feedback.error {
+            color: var(--accent-red);
+        }
+
+        /* ─── Settings / Console View ─── */
+        .settings-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            height: calc(100% - 46px);
+            overflow: hidden;
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px;
+            flex-shrink: 0;
+        }
+
+        .setting-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .setting-row label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+
+
+        /* ─── Modals ─── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            width: 340px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5);
+            transform: scale(0.9);
+            transition: transform 0.2s ease;
+        }
+
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-content h4 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .modal-content p {
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* ─── Prompt Blueprint Overlay ─── */
+        .preset-overlay-content {
+            width: 480px;
+            max-height: 420px;
+        }
+
+        .preset-overlay-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            margin-top: 10px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) var(--bg-card);
+        }
+
+        .preset-row-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background-color: var(--bg-darker);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .preset-row-item:hover {
+            border-color: var(--accent-purple);
+            background-color: #1e1535;
+            transform: translateY(-1px);
+        }
+
+        .preset-row-icon {
+            font-size: 22px;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: #151829;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .preset-row-text {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .preset-row-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .preset-row-desc {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+            line-height: 1.4;
+        }
+
+        /* ─── Dashboard Full-Width Layout ─── */
+        .dashboard-grid {
+            display: flex;
+            flex-direction: column;
+            height: calc(100% - 60px);
+            overflow: hidden;
+        }
+
+        .dashboard-history {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            background: #111322;
+            border: 1px solid #1e2238;
+            border-radius: 12px;
+            padding: 16px;
+            flex-grow: 1;
+        }
+
+        .dashboard-sub-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .dashboard-sub-header h4 {
+            margin: 0;
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        @keyframes pulse-dot-green {
+            0% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(1.3);
+                opacity: 1;
+                box-shadow: 0 0 16px #10b981;
+            }
+        }
+
+        @keyframes pulse-dot-yellow {
+            0% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(1.3);
+                opacity: 1;
+                box-shadow: 0 0 16px #f59e0b;
+            }
+        }
+
+        @keyframes pulse-dot-purple {
+            0% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(1.3);
+                opacity: 1;
+                box-shadow: 0 0 16px #6366f1;
+            }
+        }
+
+        @keyframes flash-dot-cyan {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.4);
+                background-color: #22d3ee;
+            }
+        }
+
+        /* ─── Toggle Switch Styling ─── */
+        .slider-toggle::before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider-toggle {
+            background-color: var(--accent-purple);
+            box-shadow: 0 0 8px var(--accent-purple-glow);
+        }
+
+        input:checked+.slider-toggle::before {
+            transform: translateX(20px);
+        }
+
+        /* Inactive profile style in sidebar */
+        .agent-list-item.inactive-profile {
+            opacity: 0.5;
+        }
+
+        .agent-list-item.inactive-profile:hover {
+            opacity: 0.8;
+        }
+
+        /* ─── Custom Dropdown Styles ─── */
+        .custom-dropdown {
+            position: relative;
+            width: 100%;
+        }
+
+        .dropdown-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .dropdown-trigger:hover {
+            border-color: var(--accent-purple);
+            background: #181b30;
+        }
+
+        .custom-dropdown.open .dropdown-trigger {
+            border-color: var(--accent-purple);
+            background: #1e1535;
+        }
+
+        .dropdown-trigger .selected-val {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dropdown-trigger .arrow {
+            font-size: 9px;
+            color: var(--text-secondary);
+            transition: transform 0.2s ease;
+        }
+
+        .custom-dropdown.open .dropdown-trigger .arrow {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: #17192b;
+            border: 1px solid #2e345c;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 1000;
+            max-height: 200px;
+        }
+
+        .custom-dropdown.open .dropdown-menu {
+            display: flex;
+        }
+
+        .custom-dropdown.open-upward .dropdown-menu {
+            top: auto;
+            bottom: calc(100% + 6px);
+        }
+
+        .dropdown-search-container {
+            padding: 8px;
+            border-bottom: 1px solid var(--border-color);
+            background: #111322;
+        }
+
+        .dropdown-search-input {
+            background: #0f111e;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px 10px;
+            color: var(--text-primary);
+            font-size: 12px;
+            outline: none;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+
+        .dropdown-search-input:focus {
+            border-color: var(--accent-purple);
+        }
+
+        .dropdown-options-list {
+            overflow-y: auto;
+            flex-grow: 1;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) var(--bg-card);
+        }
+
+        .dropdown-options-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .dropdown-options-list::-webkit-scrollbar-track {
+            background: var(--bg-card);
+        }
+
+        .dropdown-options-list::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        .dropdown-section-title {
+            padding: 6px 12px;
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--accent-purple);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: rgba(139, 92, 246, 0.05);
+            user-select: none;
+        }
+
+        .dropdown-option {
+            padding: 8px 12px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.15s ease;
+        }
+
+        .dropdown-option:hover {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--text-primary);
+        }
+
+        .dropdown-option.selected {
+            background: var(--accent-purple);
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .dropdown-no-results {
+            padding: 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: center;
+            user-select: none;
+        }
+    </style>
+    <script src="i18n.js"></script>
+</head>
+
+<body>
+
+    <div class="app-container">
+
+        <!-- Left Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="brand" onclick="showAboutModal()"
+                style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; width: 100%; padding-right: 8px; box-sizing: border-box;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img src="logo.png" class="brand-icon" alt="KleKit Logo">
+                    <span class="brand-name">KleKit</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-item active" onclick="switchTab('agents', this)">
+                    <span>👥</span> <span data-i18n="nav_agents">Agents Config</span>
+                </button>
+                <button class="nav-item" onclick="switchTab('history', this)">
+                    <span>📜</span> <span data-i18n="nav_history">History</span>
+                </button>
+                <button class="nav-item" onclick="switchTab('settings', this)">
+                    <span>⚙️</span> <span data-i18n="nav_settings">Settings</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="active-agents-sidebar">
+                    <div class="active-agents-title" data-i18n="active_profiles">Active Profiles</div>
+                    <div class="active-agents-grid" id="active-agents-grid">
+                        <!-- Active agents grid items loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Panel Content -->
+        <div class="main-content">
+
+            <!-- History Tab -->
+            <div id="tab-history" class="tab-pane">
+                <div class="pane-header">
+                    <h3 data-i18n="history_dashboard_title">Voice History Dashboard</h3>
+                    <button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;"
+                        onclick="confirmClearHistory()">🗑️ <span data-i18n="clear_history_btn">Clear
+                            History</span></button>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="dashboard-history">
+
+                        <div class="history-list-container" id="history-list">
+                            <!-- History items loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agents Config Tab -->
+            <div id="tab-agents" class="tab-pane active">
+                <div class="pane-header">
+                    <h3 data-i18n="agents_config_title">Agents Configuration</h3>
+                    <button class="btn btn-primary" id="add-agent-btn" onclick="addNewAgent()"
+                        data-i18n="add_agent_btn">+ Add Agent</button>
+                </div>
+
+                <div class="agents-layout">
+                    <div class="agents-sidebar" id="agents-sidebar-list">
+                        <!-- Left sidebar profiles list -->
+                    </div>
+
+                    <div class="agent-detail-form" id="agent-detail-form-container">
+                        <!-- Loaded agent detail edit form -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="tab-settings" class="tab-pane">
+                <div class="pane-header">
+                    <h3 data-i18n="workspace_settings_title">Workspace Settings</h3>
+                    <span class="save-feedback" id="settings-save-feedback"
+                        style="margin-left: 15px; font-size: 13px; color: var(--accent-green); font-weight: 500;"></span>
+                </div>
+
+                <div class="settings-form">
+                    <div class="setting-row" style="justify-content: space-between; align-items: center;">
+                        <label for="global-ui-language" data-i18n="label_ui_language">Interface Language</label>
+                        <select id="global-ui-language" onchange="changeUiLanguage(this.value)"
+                            style="background: #111322; border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 10px; color: var(--text-primary); font-size: 13px; outline: none; width: 180px; cursor: pointer;">
+                            <option value="en">🇺🇸 English</option>
+                            <option value="es">🇪🇸 Español</option>
+                            <option value="fr">🇫🇷 Français</option>
+                            <option value="de">🇩🇪 Deutsch</option>
+                            <option value="zh">🇨🇳 简体中文</option>
+                            <option value="ja">🇯🇵 日本語</option>
+                            <option value="ko">🇰🇷 한국어</option>
+                            <option value="ar">🇸🇦 العربية</option>
+                            <option value="hi">🇮🇳 हिन्दी</option>
+                            <option value="pt">🇵🇹 Português</option>
+                            <option value="it">🇮🇹 Italiano</option>
+                            <option value="nl">🇳🇱 Nederlands</option>
+                            <option value="pl">🇵🇱 Polski</option>
+                            <option value="tr">🇹🇷 Türkçe</option>
+                            <option value="vi">🇻🇳 Tiếng Việt</option>
+                            <option value="id">🇮🇩 Bahasa Indonesia</option>
+                            <option value="th">🇹🇭 ไทย</option>
+                            <option value="sv">🇸🇪 Svenska</option>
+                            <option value="no">🇳🇴 Norsk</option>
+                            <option value="uk">🇺🇦 Українська</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row" style="justify-content: space-between; align-items: center;">
+                        <label for="global-auto-paste" data-i18n="label_auto_paste">Automatically paste text at active
+                            cursor (simulates Cmd+V / Ctrl+V)</label>
+                        <label
+                            style="position: relative; display: inline-block; width: 44px; height: 24px; margin: 0; flex-shrink: 0;">
+                            <input type="checkbox" id="global-auto-paste" onchange="updateGlobalAutoPaste()"
+                                style="opacity: 0; width: 0; height: 0; position: absolute;">
+                            <span class="slider-toggle"
+                                style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b526d; transition: .3s; border-radius: 24px;"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row" style="justify-content: space-between; align-items: center;">
+                        <label for="global-enable-sounds" data-i18n="label_enable_sounds">Play short sound effects on
+                            recording start/stop and text completion</label>
+                        <label
+                            style="position: relative; display: inline-block; width: 44px; height: 24px; margin: 0; flex-shrink: 0;">
+                            <input type="checkbox" id="global-enable-sounds" onchange="updateGlobalEnableSounds()"
+                                style="opacity: 0; width: 0; height: 0; position: absolute;">
+                            <span class="slider-toggle"
+                                style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b526d; transition: .3s; border-radius: 24px;"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Custom Modal Overlay for clearing history -->
+    <div class="modal-overlay" id="clear-history-modal">
+        <div class="modal-content">
+            <h4 data-i18n="clear_history_modal_title">Clear Voice History</h4>
+            <p data-i18n="clear_history_modal_desc">Are you sure you want to delete all transcription records? This
+                operation is permanent and cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeClearHistoryModal()"
+                    data-i18n="btn_cancel">Cancel</button>
+                <button class="btn btn-danger" onclick="executeClearHistory()" data-i18n="btn_confirm_clear">Yes,
+                    Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Modal Overlay for About KleKit -->
+    <div class="modal-overlay" id="about-modal">
+        <div class="modal-content"
+            style="width: 380px; gap: 12px; text-align: center; align-items: center; padding: 24px; position: relative;">
+            <button onclick="closeAboutModal()"
+                style="position: absolute; top: 12px; right: 16px; background: none; border: none; font-size: 20px; color: var(--text-secondary); cursor: pointer; line-height: 1; padding: 0;">×</button>
+            <img src="logo.png"
+                style="width: 64px; height: 64px; border-radius: 14px; margin-bottom: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.4);"
+                alt="KleKit Logo">
+            <h4
+                style="margin: 0; font-size: 20px; font-weight: 800; font-family: 'Outfit', sans-serif; background: linear-gradient(135deg, #a855f7, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                KleKit</h4>
+            <span
+                style="font-size: 11px; color: var(--text-secondary); background: rgba(255, 255, 255, 0.08); padding: 2px 8px; border-radius: 12px; font-family: monospace; font-weight: 600;">v0.1.0</span>
+
+            <p
+                style="font-size: 12px; line-height: 1.6; color: var(--text-secondary); text-align: justify; margin: 8px 0; word-break: break-word;">
+                KleKit is a lightweight, open-source voice-to-text utility that lets you dictate text directly into any
+                input field. All processing happens entirely offline and on-device — meaning no internet connection is
+                required, no cloud services are used, and no data ever leaves your hardware. Simply press a global
+                hotkey, speak, and watch your spoken words get transcribed, refined by a local LLM, and pasted instantly
+                at your active cursor.
+            </p>
+
+            <div style="border-top: 1px solid var(--border-color); width: 100%; padding-top: 12px; margin-top: 4px;">
+                <button class="btn btn-secondary" onclick="openRepoLink()"
+                    style="font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.02); color: var(--text-primary); cursor: pointer; border-radius: 6px; transition: all 0.2s;">
+                    📂 GitHub Repository
+                </button>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 12px; width: 100%; justify-content: center;">
+                <button class="btn btn-secondary" onclick="closeAboutModal()"
+                    style="width: 100%; padding: 8px; cursor: pointer;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Preset Prompts Blueprint Overlay -->
+    <div class="modal-overlay" id="preset-overlay">
+        <div class="modal-content preset-overlay-content">
+            <div class="pane-header">
+                <h3 data-i18n="preset_overlay_title">Select Prompt Preset Blueprint</h3>
+                <button class="close-btn" onclick="closePresetOverlay()">×</button>
+            </div>
+            <div class="preset-overlay-list" id="preset-overlay-list">
+                <!-- Preset items loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- History Item Details Overlay Modal -->
+    <div class="modal-overlay" id="history-detail-overlay">
+        <div class="modal-content history-detail-content">
+            <div class="pane-header">
+                <h3 data-i18n="history_detail_title">Capture Details</h3>
+                <button class="close-btn" onclick="closeHistoryDetail()">×</button>
+            </div>
+            <div class="history-detail-body">
+                <div class="history-detail-section">
+                    <span class="label-badge raw" data-i18n="history_detail_raw_badge">Whisper STT (Raw Input)</span>
+                    <div class="history-detail-text raw" id="history-detail-raw"></div>
+                </div>
+                <div class="history-detail-section">
+                    <span class="label-badge refined" data-i18n="history_detail_refined_badge">Gemma 2 (Refined
+                        Output)</span>
+                    <div class="history-detail-text" id="history-detail-refined"></div>
+                </div>
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
+                    <span id="history-detail-time"></span>
+                    <span id="history-detail-agent"
+                        style="background-color: rgba(139, 92, 246, 0.1); color: var(--accent-purple); border: 1px solid rgba(139, 92, 246, 0.2); padding: 2px 8px; border-radius: 12px; font-weight: 700;"></span>
+                </div>
+            </div>
+            <div
+                style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: auto;">
+                <button class="btn btn-secondary" id="history-detail-copy-btn"
+                    style="padding: 6px 12px; font-size: 12px;">📋 <span data-i18n="history_detail_copy_btn">Copy
+                        Refined</span></button>
+                <button class="btn btn-danger" id="history-detail-delete-btn"
+                    style="padding: 6px 12px; font-size: 12px;">🗑️ <span
+                        data-i18n="history_detail_delete_btn">Delete</span></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ─── UI Localization Helper ───
+        const SUPPORTED_LANGUAGES = ['en', 'es', 'fr', 'de', 'zh', 'ja', 'ko', 'ar', 'hi', 'pt', 'it', 'nl', 'pl', 'tr', 'vi', 'id', 'th', 'sv', 'no', 'uk'];
+
+        function detectSystemLanguage() {
+            const sysLang = navigator.language || navigator.userLanguage || '';
+            const code = sysLang.split('-')[0].toLowerCase();
+            return SUPPORTED_LANGUAGES.includes(code) ? code : 'en';
+        }
+
+        let currentLang = localStorage.getItem('klekit_ui_lang');
+        if (!currentLang || !SUPPORTED_LANGUAGES.includes(currentLang)) {
+            currentLang = detectSystemLanguage();
+        }
+
+        function t(key) {
+            const translations = UI_TRANSLATIONS[currentLang] || UI_TRANSLATIONS['en'];
+            return translations[key] || UI_TRANSLATIONS['en'][key] || key;
+        }
+
+        function escapeJsString(unsafe) {
+            if (!unsafe) return '';
+            return unsafe.replace(/'/g, "\\'");
+        }
+
+        async function updateUiLanguage() {
+            // Update all elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                el.textContent = t(key);
+            });
+
+            // Update language select element value
+            const langSelect = document.getElementById('global-ui-language');
+            if (langSelect) {
+                langSelect.value = currentLang;
+            }
+
+            // Reload presets with new language
+            await loadPresets();
+
+            // Re-render components to apply new translations
+            renderAgentsList();
+            if (activeAgentId) {
+                selectAgent(activeAgentId);
+            } else {
+                const container = document.getElementById('agent-detail-form-container');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <p>${escapeHtml(t('no_agents_found'))}</p>
+                        </div>
+                    `;
+                }
+            }
+            checkAgentCap();
+
+            // Update history if active
+            const historyTab = document.getElementById('tab-history');
+            if (historyTab && historyTab.classList.contains('active')) {
+                loadHistory(false);
+            }
+        }
+
+        function changeUiLanguage(lang) {
+            if (SUPPORTED_LANGUAGES.includes(lang)) {
+                currentLang = lang;
+                localStorage.setItem('klekit_ui_lang', lang);
+                updateUiLanguage();
+            }
+        }
+
+        // ─── Local State ───
+        let localSettings = {
+            agents: [],
+            enable_auto_paste: true,
+            enable_sounds: true
+        };
+        let activeAgentId = null;
+        let isRecordingHotkey = false;
+
+        // 101 supported languages by Whisper, excluding Russian (ru)
+        const WHISPER_LANGUAGES = [
+            { code: 'en', name: 'English', flag: '🇺🇸' },
+            { code: 'uk', name: 'Ukrainian', flag: '🇺🇦' },
+            { code: 'de', name: 'German', flag: '🇩🇪' },
+            { code: 'es', name: 'Spanish', flag: '🇪🇸' },
+            { code: 'fr', name: 'French', flag: '🇫🇷' },
+            { code: 'it', name: 'Italian', flag: '🇮🇹' },
+            { code: 'af', name: 'Afrikaans', flag: '🇿🇦' },
+            { code: 'sq', name: 'Albanian', flag: '🇦🇱' },
+            { code: 'am', name: 'Amharic', flag: '🇪🇹' },
+            { code: 'ar', name: 'Arabic', flag: '🇸🇦' },
+            { code: 'hy', name: 'Armenian', flag: '🇦🇲' },
+            { code: 'as', name: 'Assamese', flag: '🇮🇳' },
+            { code: 'az', name: 'Azerbaijani', flag: '🇦🇿' },
+            { code: 'ba', name: 'Bashkir', flag: '🌍' },
+            { code: 'eu', name: 'Basque', flag: '🇪🇸' },
+            { code: 'be', name: 'Belarusian', flag: '🇧🇾' },
+            { code: 'bn', name: 'Bengali', flag: '🇧🇩' },
+            { code: 'bs', name: 'Bosnian', flag: '🇧🇦' },
+            { code: 'br', name: 'Breton', flag: '🇫🇷' },
+            { code: 'bg', name: 'Bulgarian', flag: '🇧🇬' },
+            { code: 'my', name: 'Burmese', flag: '🇲🇲' },
+            { code: 'ca', name: 'Catalan', flag: '🇪🇸' },
+            { code: 'zh', name: 'Chinese', flag: '🇨🇳' },
+            { code: 'hr', name: 'Croatian', flag: '🇭🇷' },
+            { code: 'cs', name: 'Czech', flag: '🇨🇿' },
+            { code: 'da', name: 'Danish', flag: '🇩🇰' },
+            { code: 'nl', name: 'Dutch', flag: '🇳🇱' },
+            { code: 'eo', name: 'Esperanto', flag: '🌍' },
+            { code: 'et', name: 'Estonian', flag: '🇪🇪' },
+            { code: 'fo', name: 'Faroese', flag: '🇫🇴' },
+            { code: 'fi', name: 'Finnish', flag: '🇫🇮' },
+            { code: 'gl', name: 'Galician', flag: '🇪🇸' },
+            { code: 'ka', name: 'Georgian', flag: '🇬🇪' },
+            { code: 'el', name: 'Greek', flag: '🇬🇷' },
+            { code: 'gu', name: 'Gujarati', flag: '🇮🇳' },
+            { code: 'ht', name: 'Haitian Creole', flag: '🇭🇹' },
+            { code: 'ha', name: 'Hausa', flag: '🇳🇬' },
+            { code: 'haw', name: 'Hawaiian', flag: '🇺🇸' },
+            { code: 'he', name: 'Hebrew', flag: '🇮🇱' },
+            { code: 'hi', name: 'Hindi', flag: '🇮🇳' },
+            { code: 'hu', name: 'Hungarian', flag: '🇭🇺' },
+            { code: 'is', name: 'Icelandic', flag: '🇮🇸' },
+            { code: 'id', name: 'Indonesian', flag: '🇮🇩' },
+            { code: 'ja', name: 'Japanese', flag: '🇯🇵' },
+            { code: 'jw', name: 'Javanese', flag: '🇮🇩' },
+            { code: 'kn', name: 'Kannada', flag: '🇮🇳' },
+            { code: 'kk', name: 'Kazakh', flag: '🇰🇿' },
+            { code: 'km', name: 'Khmer', flag: '🇰🇭' },
+            { code: 'ko', name: 'Korean', flag: '🇰🇷' },
+            { code: 'lo', name: 'Lao', flag: '🇱🇦' },
+            { code: 'la', name: 'Latin', flag: '🌍' },
+            { code: 'lv', name: 'Latvian', flag: '🇱🇻' },
+            { code: 'ln', name: 'Lingala', flag: '🇨🇩' },
+            { code: 'lt', name: 'Lithuanian', flag: '🇱🇹' },
+            { code: 'lb', name: 'Luxembourgish', flag: '🇱🇺' },
+            { code: 'mk', name: 'Macedonian', flag: '🇲🇰' },
+            { code: 'mg', name: 'Malagasy', flag: '🇲🇬' },
+            { code: 'ms', name: 'Malay', flag: '🇲🇾' },
+            { code: 'ml', name: 'Malayalam', flag: '🇮🇳' },
+            { code: 'mt', name: 'Maltese', flag: '🇲🇹' },
+            { code: 'mi', name: 'Maori', flag: '🇳🇿' },
+            { code: 'mr', name: 'Marathi', flag: '🇮🇳' },
+            { code: 'mn', name: 'Mongolian', flag: '🇲🇳' },
+            { code: 'ne', name: 'Nepali', flag: '🇳🇵' },
+            { code: 'no', name: 'Norwegian', flag: '🇳🇴' },
+            { code: 'nn', name: 'Nynorsk', flag: '🇳🇴' },
+            { code: 'oc', name: 'Occitan', flag: '🇫🇷' },
+            { code: 'or', name: 'Oriya', flag: '🇮🇳' },
+            { code: 'ps', name: 'Pashto', flag: '🇦🇫' },
+            { code: 'fa', name: 'Persian', flag: '🇮🇷' },
+            { code: 'pl', name: 'Polish', flag: '🇵🇱' },
+            { code: 'pt', name: 'Portuguese', flag: '🇵🇹' },
+            { code: 'pa', name: 'Punjabi', flag: '🇮🇳' },
+            { code: 'ro', name: 'Romanian', flag: '🇷🇴' },
+            { code: 'sa', name: 'Sanskrit', flag: '🇮🇳' },
+            { code: 'gd', name: 'Scottish Gaelic', flag: '🇬🇧' },
+            { code: 'sr', name: 'Serbian', flag: '🇷🇸' },
+            { code: 'sn', name: 'Shona', flag: '🇿🇼' },
+            { code: 'sd', name: 'Sindhi', flag: '🇵🇰' },
+            { code: 'si', name: 'Sinhala', flag: '🇱🇰' },
+            { code: 'sk', name: 'Slovak', flag: '🇸🇰' },
+            { code: 'sl', name: 'Slovenian', flag: '🇸🇮' },
+            { code: 'so', name: 'Somali', flag: '🇸🇴' },
+            { code: 'su', name: 'Sundanese', flag: '🇮🇩' },
+            { code: 'sw', name: 'Swahili', flag: '🇰🇪' },
+            { code: 'sv', name: 'Swedish', flag: '🇸🇪' },
+            { code: 'tl', name: 'Tagalog', flag: '🇵🇭' },
+            { code: 'tg', name: 'Tajik', flag: '🇹🇯' },
+            { code: 'ta', name: 'Tamil', flag: '🇮🇳' },
+            { code: 'tt', name: 'Tatar', flag: '🌍' },
+            { code: 'te', name: 'Telugu', flag: '🇮🇳' },
+            { code: 'th', name: 'Thai', flag: '🇹🇭' },
+            { code: 'bo', name: 'Tibetan', flag: '🌍' },
+            { code: 'tr', name: 'Turkish', flag: '🇹🇷' },
+            { code: 'tk', name: 'Turkmen', flag: '🇹🇲' },
+            { code: 'ur', name: 'Urdu', flag: '🇵🇰' },
+            { code: 'uz', name: 'Uzbek', flag: '🇺🇿' },
+            { code: 'vi', name: 'Vietnamese', flag: '🇻🇳' },
+            { code: 'cy', name: 'Welsh', flag: '🇬🇧' },
+            { code: 'yi', name: 'Yiddish', flag: '🌍' },
+            { code: 'yo', name: 'Yoruba', flag: '🇳🇬' },
+            { code: 'zu', name: 'Zulu', flag: '🇿🇦' }
+        ];
+
+        let historyPage = 0;
+        let historyLoading = false;
+        let historyEnd = false;
+
+        let presetBlueprints = [
+            { id: 'None', title: 'No Preset', desc: 'Strictly use only the custom system prompt addon without any preset template instructions.', icon: 'minus-circle' },
+            { id: 'fix_errors_only', title: 'Fix Errors Only', desc: 'Cleans typos, grammar, and syntax while preserving raw conversational structure.', icon: 'check-circle' },
+            { id: 'spoken_to_written', title: 'Spoken to Written Transmuter', desc: 'Converts raw, informal verbal speech, filtering out filler words into structured written text.', icon: 'book-open' },
+            { id: 'workspace_sync', title: 'Workspace Sync', desc: 'Polishes internal team communication, balancing corporate, technical, and slang terms for Slack/Jira.', icon: 'slack' },
+            { id: 'formal_directive', title: 'Formal Directive', desc: 'Transforms words into strict, highly formal, professional, or legal-sounding syntax.', icon: 'briefcase' },
+            { id: 'prompt_smith', title: 'Prompt Smith', desc: 'Transforms rough ideas into structured markdown/XML instructions for engineering other AI models.', icon: 'cpu' }
+        ];
+
+        async function loadPresets() {
+            try {
+                const blueprints = await invokeCommand('get_preset_blueprints');
+                if (blueprints && blueprints.length > 0) {
+                    const userLang = currentLang;
+                    presetBlueprints = blueprints.map(p => {
+                        const translation = p.translations[userLang] || p.translations['en'] || {};
+                        return {
+                            id: p.id,
+                            title: translation.title || p.id,
+                            desc: translation.subtitle || '',
+                            icon: p.icon
+                        };
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to load preset blueprints:', e);
+            }
+        }
+
+        // Map visual icons to Emojis
+        function getPresetEmoji(key) {
+            switch (key) {
+                case 'minus-circle': return '🚫';
+                case 'check-circle': return '✔️';
+                case 'book-open': return '📖';
+                case 'slack': return '💬';
+                case 'briefcase': return '💼';
+                case 'cpu': return '💻';
+                default: return key || '📝';
+            }
+        }
+
+        // ─── Status indicator (invoked via window.eval from Rust) ───
+        window.updateStatus = (status) => {
+            // Keep active agent badge updated
+            updateFooterActiveAgent();
+        };
+
+        // ─── Tab Switcher ───
+        function switchTab(tabId, element) {
+            if (isRecordingHotkey) {
+                stopHotkeyRecording(null);
+            }
+
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            if (element) {
+                element.classList.add('active');
+            } else {
+                const navs = document.querySelectorAll('.nav-item');
+                if (tabId === 'agents') navs[0].classList.add('active');
+                else if (tabId === 'history') navs[1].classList.add('active');
+                else if (tabId === 'settings') navs[2].classList.add('active');
+            }
+
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+
+            if (tabId === 'history') {
+                loadHistory(false);
+            }
+        }
+
+        // ─── Tauri Command Invoker ───
+        async function invokeCommand(cmd, args) {
+            if (window.__TAURI__) {
+                return await window.__TAURI__.core.invoke(cmd, args);
+            }
+            console.warn('[DEV] Tauri not available:', cmd, args);
+            return null;
+        }
+
+        // ─── Settings Handling ───
+        async function loadSettings() {
+            try {
+                const s = await invokeCommand('get_settings');
+                if (s) {
+                    localSettings = s;
+                    document.getElementById('global-auto-paste').checked = localSettings.enable_auto_paste;
+                    document.getElementById('global-enable-sounds').checked = localSettings.enable_sounds !== false;
+
+                    renderAgentsList();
+
+                    if (localSettings.agents && localSettings.agents.length > 0) {
+                        if (!activeAgentId) {
+                            activeAgentId = localSettings.agents[0].id;
+                        }
+                        selectAgent(activeAgentId);
+                    } else {
+                        document.getElementById('agent-detail-form-container').innerHTML = `
+                            <div class="empty-state">
+                                <p>${escapeHtml(t('no_agents_found'))}</p>
+                            </div>
+                        `;
+                    }
+                    checkAgentCap();
+                    updateFooterActiveAgent();
+                }
+            } catch (e) {
+                console.error('Failed to load settings:', e);
+            }
+        }
+
+        let autoSaveTimeout = null;
+        function autoSaveSettings() {
+            const feedbackAgent = document.getElementById('save-feedback-message');
+            const feedbackSettings = document.getElementById('settings-save-feedback');
+            [feedbackAgent, feedbackSettings].forEach(el => {
+                if (!el) return;
+                el.textContent = '⏳ ' + t('saving');
+                el.className = 'save-feedback success';
+                el.style.opacity = '1';
+            });
+
+            if (autoSaveTimeout) {
+                clearTimeout(autoSaveTimeout);
+            }
+
+            autoSaveTimeout = setTimeout(async () => {
+                try {
+                    await invokeCommand('save_settings', { newSettings: localSettings });
+                    [feedbackAgent, feedbackSettings].forEach(el => {
+                        if (!el) return;
+                        el.textContent = '✅ ' + t('auto_saved');
+                        el.className = 'save-feedback success';
+                        setTimeout(() => {
+                            if (el.textContent === '✅ ' + t('auto_saved')) {
+                                el.style.opacity = '0';
+                            }
+                        }, 1500);
+                    });
+                } catch (e) {
+                    showSaveFeedback('❌ ' + t('save_failed') + ': ' + e, true);
+                }
+            }, 600);
+        }
+
+        function updateGlobalAutoPaste() {
+            localSettings.enable_auto_paste = document.getElementById('global-auto-paste').checked;
+            autoSaveSettings();
+        }
+
+        function updateGlobalEnableSounds() {
+            localSettings.enable_sounds = document.getElementById('global-enable-sounds').checked;
+            autoSaveSettings();
+        }
+
+
+        // ─── Agents Tab Logic ───
+        function renderAgentsList() {
+            const list = document.getElementById('agents-sidebar-list');
+            if (!list) return;
+            list.innerHTML = '';
+
+            localSettings.agents.forEach(agent => {
+                const item = document.createElement('div');
+                const inactiveClass = agent.is_active ? '' : ' inactive-profile';
+                item.className = 'agent-list-item' + (agent.id === activeAgentId ? ' selected' : '') + inactiveClass;
+                item.id = `agent-item-${agent.id}`;
+                item.onclick = (e) => {
+                    if (e.target.classList.contains('delete-agent-btn')) return;
+                    selectAgent(agent.id);
+                };
+
+                // Always show delete button
+                const showDelete = true;
+                const deleteBtn = showDelete
+                    ? `<button class="delete-agent-btn" onclick="deleteAgent('${agent.id}')" title="Delete profile">×</button>`
+                    : '';
+
+                const escName = escapeHtml(agent.name);
+                item.innerHTML = `
+                    <div class="agent-list-name">${escName}</div>
+                    <div class="agent-list-hotkey">${escapeHtml(displayHotkey(agent.hotkey_value))}</div>
+                    ${deleteBtn}
+                `;
+                list.appendChild(item);
+            });
+            renderActiveAgentsGrid();
+        }
+
+        function displayHotkey(value) {
+            if (!value) return 'None';
+            let res = value;
+            res = res.replace('MouseButton4', 'Mouse 4');
+            res = res.replace('MouseButton5', 'Mouse 5');
+            return res;
+        }
+
+
+
+        function renderActiveAgentsGrid() {
+            const grid = document.getElementById('active-agents-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            const activeAgents = localSettings.agents.filter(a => a.is_active);
+
+            activeAgents.forEach(agent => {
+                const row = document.createElement('div');
+                row.className = 'active-agent-row';
+                row.id = `active-agent-row-${agent.id}`;
+
+                row.innerHTML = `
+                    <span class="agent-status-dot idle" id="agent-dot-${agent.id}"></span>
+                    <span class="agent-name-span">${escapeHtml(agent.name)}</span>
+                    <span class="agent-hotkey-span">${escapeHtml(displayHotkey(agent.hotkey_value))}</span>
+                `;
+                grid.appendChild(row);
+            });
+        }
+
+        function selectAgent(id) {
+            activeAgentId = id;
+            renderAgentsList();
+
+            const agent = localSettings.agents.find(a => a.id === id);
+            const container = document.getElementById('agent-detail-form-container');
+            if (!agent || !container) return;
+
+            const activePreset = presetBlueprints.find(p => p.id === agent.preset_id) || presetBlueprints[0];
+
+            container.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+                    <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.04em; text-transform: uppercase;">${escapeHtml(t('active'))}</span>
+                    <label style="position: relative; display: inline-block; width: 44px; height: 24px; margin: 0; flex-shrink: 0;">
+                        <input type="checkbox" id="agent-active" ${agent.is_active ? 'checked' : ''} onchange="updateAgentField('is_active', this.checked)" style="opacity: 0; width: 0; height: 0; position: absolute;">
+                        <span class="slider-toggle" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b526d; transition: .3s; border-radius: 24px;"></span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>${escapeHtml(t('activation_trigger'))}</label>
+                    <div class="hotkey-single-input-container">
+                        <input type="text" id="agent-hotkey-input" readonly value="${escapeHtml(displayHotkey(agent.hotkey_value))}" placeholder="${escapeHtml(t('placeholder_hotkey'))}" onclick="startHotkeyRecording()">
+                        <div class="hotkey-hint" id="hotkey-hint">⚠️ <span id="hotkey-hint-text"></span></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="agent-name">${escapeHtml(t('agent_name'))}</label>
+                    <input type="text" id="agent-name" value="${escapeHtml(agent.name)}" oninput="updateAgentField('name', this.value)">
+                </div>
+
+                <div class="form-group">
+                    <label>${escapeHtml(t('language_speaker'))}</label>
+                    <div class="custom-dropdown" id="dropdown-agent-stt">
+                        <div class="dropdown-trigger" onclick="toggleDropdown('stt', event)">
+                            <span class="selected-val" id="selected-stt-val">🌐 ${escapeHtml(t('auto_detect'))}</span>
+                            <span class="arrow">▼</span>
+                        </div>
+                        <div class="dropdown-menu">
+                            <div class="dropdown-search-container">
+                                <input type="text" class="dropdown-search-input" placeholder="${escapeHtml(t('search'))}" oninput="filterDropdown('stt', this.value)" onclick="event.stopPropagation()">
+                            </div>
+                            <div class="dropdown-options-list" id="stt-options-list">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="agent-whisper-prompt">${escapeHtml(t('prompt_speak'))}</label>
+                    <input type="text" id="agent-whisper-prompt" value="${escapeHtml(agent.whisper_prompt || '')}" placeholder="e.g. json, html, kubernetes, sergey (helps recognize specific words)" oninput="updateAgentField('whisper_prompt', this.value)">
+                </div>
+
+                <div class="form-group">
+                    <label>${escapeHtml(t('language_writing'))}</label>
+                    <div class="custom-dropdown" id="dropdown-agent-target">
+                        <div class="dropdown-trigger" onclick="toggleDropdown('target', event)">
+                            <span class="selected-val" id="selected-target-val">🚫 ${escapeHtml(t('no_translation'))}</span>
+                            <span class="arrow">▼</span>
+                        </div>
+                        <div class="dropdown-menu">
+                            <div class="dropdown-search-container">
+                                <input type="text" class="dropdown-search-input" placeholder="${escapeHtml(t('search'))}" oninput="filterDropdown('target', this.value)" onclick="event.stopPropagation()">
+                            </div>
+                            <div class="dropdown-options-list" id="target-options-list">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>${escapeHtml(t('preset_blueprint'))}</label>
+                    <div class="preset-selector-trigger" onclick="openPresetOverlay()">
+                        <span class="preset-trigger-icon" id="agent-preset-icon">${getPresetEmoji(activePreset.icon)}</span>
+                        <div class="preset-trigger-text">
+                            <span class="preset-trigger-title" id="agent-preset-title">${escapeHtml(activePreset.title)}</span>
+                            <span class="preset-trigger-desc" id="agent-preset-desc">${escapeHtml(activePreset.desc)}</span>
+                        </div>
+                        <span class="preset-trigger-arrow">▼</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="agent-custom-prompt">${escapeHtml(t('custom_prompt'))}</label>
+                    <textarea id="agent-custom-prompt" placeholder="${escapeHtml(t('placeholder_custom_prompt'))}" oninput="updateAgentField('custom_prompt', this.value)">${escapeHtml(agent.custom_prompt)}</textarea>
+                </div>
+
+                <div class="save-bar">
+                    <span class="save-feedback" id="save-feedback-message"></span>
+                </div>
+            `;
+            renderCustomDropdown('stt', agent.stt_language);
+            renderCustomDropdown('target', agent.target_language);
+            updateFooterActiveAgent();
+        }
+
+        function updateAgentField(field, value) {
+            const agent = localSettings.agents.find(a => a.id === activeAgentId);
+            if (agent) {
+                agent[field] = value;
+                if (field === 'name') {
+                    renderAgentsList();
+                    updateFooterActiveAgent();
+                }
+                if (field === 'hotkey_value') {
+                    renderAgentsList();
+                }
+                if (field === 'is_active') {
+                    renderAgentsList();
+                }
+                autoSaveSettings();
+            }
+        }
+
+        function addNewAgent() {
+            if (localSettings.agents.length >= 10) {
+                alert('Maximum limit of 10 agents reached.');
+                return;
+            }
+
+            const id = 'agent_' + Date.now();
+            const newAgent = {
+                id: id,
+                name: 'Agent Profile ' + (localSettings.agents.length + 1),
+                stt_language: 'en',
+                whisper_prompt: '',
+                target_language: 'No Translation',
+                preset_id: 'fix_errors_only',
+                custom_prompt: '',
+                hotkey_type: 'Keyboard',
+                hotkey_value: '',
+                is_active: true
+            };
+            localSettings.agents.push(newAgent);
+            activeAgentId = id;
+            renderAgentsList();
+            selectAgent(id);
+            checkAgentCap();
+            autoSaveSettings();
+        }
+
+        function deleteAgent(id) {
+            localSettings.agents = localSettings.agents.filter(a => a.id !== id);
+
+            if (localSettings.agents.length === 0) {
+                activeAgentId = null;
+                document.getElementById('agent-detail-form-container').innerHTML = `
+                    <div class="empty-state">
+                        <p>${escapeHtml(t('no_agents_create_hint'))}</p>
+                    </div>
+                `;
+                renderAgentsList();
+                checkAgentCap();
+                autoSaveSettings();
+                return;
+            }
+
+            if (activeAgentId === id) {
+                activeAgentId = localSettings.agents[0].id;
+            }
+            renderAgentsList();
+            selectAgent(activeAgentId);
+            checkAgentCap();
+            autoSaveSettings();
+        }
+
+        function checkAgentCap() {
+            const btn = document.getElementById('add-agent-btn');
+            if (!btn) return;
+            if (localSettings.agents.length >= 10) {
+                btn.disabled = true;
+                btn.textContent = t('add_agent_max_btn');
+            } else {
+                btn.disabled = false;
+                btn.textContent = t('add_agent_btn');
+            }
+        }
+
+        function updateFooterActiveAgent() {
+            renderActiveAgentsGrid();
+        }
+
+        // ─── Preset Blueprint Overlay Screen Logic ───
+        function openPresetOverlay() {
+            const overlay = document.getElementById('preset-overlay');
+            const list = document.getElementById('preset-overlay-list');
+            if (!overlay || !list) return;
+
+            list.innerHTML = '';
+            presetBlueprints.forEach(p => {
+                const row = document.createElement('div');
+                row.className = 'preset-row-item';
+                row.onclick = () => selectPresetBlueprint(p.id);
+
+                row.innerHTML = `
+                    <div class="preset-row-icon">${getPresetEmoji(p.icon)}</div>
+                    <div class="preset-row-text">
+                        <span class="preset-row-title">${escapeHtml(p.title)}</span>
+                        <span class="preset-row-desc">${escapeHtml(p.desc)}</span>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+
+            overlay.classList.add('visible');
+        }
+
+        function closePresetOverlay() {
+            const overlay = document.getElementById('preset-overlay');
+            if (overlay) overlay.classList.remove('visible');
+        }
+
+        function selectPresetBlueprint(presetId) {
+            const agent = localSettings.agents.find(a => a.id === activeAgentId);
+            if (agent) {
+                agent.preset_id = presetId;
+
+                const blueprint = presetBlueprints.find(p => p.id === presetId);
+                if (blueprint) {
+                    const iconEl = document.getElementById('agent-preset-icon');
+                    const titleEl = document.getElementById('agent-preset-title');
+                    const descEl = document.getElementById('agent-preset-desc');
+                    if (iconEl) iconEl.innerText = getPresetEmoji(blueprint.icon);
+                    if (titleEl) titleEl.innerText = blueprint.title;
+                    if (descEl) descEl.innerText = blueprint.desc;
+                }
+                autoSaveSettings();
+            }
+            closePresetOverlay();
+        }
+
+        // ─── Global Save Feedback ───
+        function showSaveFeedback(msg, isError) {
+            const feedbackAgent = document.getElementById('save-feedback-message');
+            const feedbackSettings = document.getElementById('settings-save-feedback');
+            [feedbackAgent, feedbackSettings].forEach(el => {
+                if (!el) return;
+                el.textContent = msg;
+                el.className = 'save-feedback ' + (isError ? 'error' : 'success');
+                el.style.opacity = '1';
+                setTimeout(() => {
+                    if (el.textContent === msg) {
+                        el.style.opacity = '0';
+                    }
+                }, 3000);
+            });
+        }
+
+        // ─── Hotkey Recorder ───
+        // Returns the agent (if any) that already owns this hotkey_value,
+        // excluding the currently-selected agent so it can keep its own binding.
+        function findHotkeyConflict(hotkeyString) {
+            if (!hotkeyString) return null;
+            return localSettings.agents.find(
+                a => a.id !== activeAgentId && a.hotkey_value === hotkeyString
+            ) || null;
+        }
+
+        let _hotkeyHintTimer = null;
+        function showHotkeyError(msg) {
+            const hint = document.getElementById('hotkey-hint');
+            const text = document.getElementById('hotkey-hint-text');
+            if (!hint || !text) return;
+            text.textContent = msg;
+            hint.classList.add('visible');
+            if (_hotkeyHintTimer) clearTimeout(_hotkeyHintTimer);
+            _hotkeyHintTimer = setTimeout(() => {
+                hint.classList.remove('visible');
+            }, 4000);
+        }
+
+        function clearHotkeyError() {
+            const hint = document.getElementById('hotkey-hint');
+            if (hint) hint.classList.remove('visible');
+            if (_hotkeyHintTimer) { clearTimeout(_hotkeyHintTimer); _hotkeyHintTimer = null; }
+        }
+
+        function startHotkeyRecording() {
+            if (isRecordingHotkey) return;
+            isRecordingHotkey = true;
+            clearHotkeyError();
+            const input = document.getElementById('agent-hotkey-input');
+            if (input) {
+                input.className = 'listening';
+                input.value = 'Press keys or mouse buttons (Esc to cancel)...';
+                input.focus();
+            }
+        }
+
+        function handleGlobalKeydown(e) {
+            if (!isRecordingHotkey) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (e.key === 'Escape') {
+                stopHotkeyRecording(null);
+                return;
+            }
+
+            const parts = [];
+            if (e.metaKey) parts.push('Command');
+            if (e.ctrlKey) parts.push('Control');
+            if (e.altKey) parts.push('Alt');
+            if (e.shiftKey) parts.push('Shift');
+
+            let key = e.key;
+            const code = e.code;
+            const isModifier = ['Control', 'Shift', 'Alt', 'Meta'].includes(key);
+
+            const input = document.getElementById('agent-hotkey-input');
+
+            if (!isModifier) {
+                if (key === ' ') {
+                    key = 'Space';
+                } else if (key.length === 1) {
+                    key = key.toUpperCase();
+                } else if (code.startsWith('F') && code.length <= 3) {
+                    key = code;
+                } else if (key === 'CapsLock') {
+                    key = 'CapsLock';
+                } else if (key === 'Enter') {
+                    key = 'Enter';
+                }
+
+                parts.push(key);
+                const hotkeyString = parts.join('+');
+
+                invokeCommand('test_hotkey', { hotkey: hotkeyString })
+                    .then(() => {
+                        // Check for duplicate across other agent profiles
+                        const conflictingAgent = findHotkeyConflict(hotkeyString);
+                        if (conflictingAgent) {
+                            if (input) {
+                                const agent = localSettings.agents.find(a => a.id === activeAgentId);
+                                input.value = agent ? displayHotkey(agent.hotkey_value) : '';
+                            }
+                            stopHotkeyRecording(null);
+                            showHotkeyError(`"${hotkeyString}" is already used by "${conflictingAgent.name}". Choose a different key.`);
+                            return;
+                        }
+                        clearHotkeyError();
+                        if (input) {
+                            input.value = hotkeyString;
+                        }
+                        stopHotkeyRecording(hotkeyString);
+                    })
+                    .catch((err) => {
+                        stopHotkeyRecording(null);
+                        showHotkeyError('OS rejected this hotkey: ' + err);
+                    });
+            } else {
+                if (input) {
+                    input.value = parts.join('+') + '+...';
+                }
+            }
+        }
+
+        function handleGlobalMousedown(e) {
+            if (!isRecordingHotkey) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const parts = [];
+            if (e.metaKey) parts.push('Command');
+            if (e.ctrlKey) parts.push('Control');
+            if (e.altKey) parts.push('Alt');
+            if (e.shiftKey) parts.push('Shift');
+
+            let btnName = null;
+            if (e.button === 3) {
+                btnName = 'MouseButton4';
+            } else if (e.button === 4) {
+                btnName = 'MouseButton5';
+            }
+
+            if (btnName) {
+                parts.push(btnName);
+                const hotkeyString = parts.join('+');
+
+                // Check for duplicate across other agent profiles
+                const conflictingAgent = findHotkeyConflict(hotkeyString);
+                if (conflictingAgent) {
+                    const input = document.getElementById('agent-hotkey-input');
+                    if (input) {
+                        const agent = localSettings.agents.find(a => a.id === activeAgentId);
+                        input.value = agent ? displayHotkey(agent.hotkey_value) : '';
+                    }
+                    stopHotkeyRecording(null);
+                    showHotkeyError(`"${displayHotkey(hotkeyString)}" is already used by "${conflictingAgent.name}". Choose a different button.`);
+                    return;
+                }
+
+                clearHotkeyError();
+                const input = document.getElementById('agent-hotkey-input');
+                if (input) {
+                    input.value = hotkeyString;
+                }
+                stopHotkeyRecording(hotkeyString);
+            }
+        }
+
+        function stopHotkeyRecording(finalValue) {
+            isRecordingHotkey = false;
+            const input = document.getElementById('agent-hotkey-input');
+            if (input) {
+                input.className = '';
+            }
+            if (finalValue !== null) {
+                const agent = localSettings.agents.find(a => a.id === activeAgentId);
+                if (agent) {
+                    if (finalValue.includes('MouseButton')) {
+                        agent.hotkey_type = 'Mouse';
+                    } else {
+                        agent.hotkey_type = 'Keyboard';
+                    }
+                }
+                updateAgentField('hotkey_value', finalValue);
+            } else {
+                const agent = localSettings.agents.find(a => a.id === activeAgentId);
+                if (agent && input) {
+                    input.value = displayHotkey(agent.hotkey_value);
+                }
+            }
+        }
+
+        document.addEventListener('keydown', handleGlobalKeydown, true);
+        document.addEventListener('mousedown', handleGlobalMousedown, true);
+
+        // ─── Voice History Tab Logic (Paging & Scroll) ───
+        function loadHistory(append = false) {
+            if (historyLoading || (historyEnd && append)) return;
+            historyLoading = true;
+
+            const list = document.getElementById('history-list');
+            if (!append) {
+                historyPage = 0;
+                historyEnd = false;
+                list.innerHTML = `
+                    <div style="display: flex; justify-content: center; align-items: center; height: 120px;">
+                        <span style="font-size: 13px; color: var(--text-secondary);">${escapeHtml(t('loading_logs'))}</span>
+                    </div>
+                `;
+            }
+
+            invokeCommand('get_history_page', { page: historyPage })
+                .then((records) => {
+                    historyLoading = false;
+                    if (!append) {
+                        list.innerHTML = '';
+                    }
+
+                    if (!records || records.length === 0) {
+                        if (!append) {
+                            list.innerHTML = `
+                                <div class="empty-state">
+                                    <span class="empty-icon">📜</span>
+                                    <p>${escapeHtml(t('no_history_recorded'))}</p>
+                                    <span class="empty-sub">${escapeHtml(t('transcriptions_logged_here'))}</span>
+                                </div>
+                            `;
+                        }
+                        historyEnd = true;
+                        return;
+                    }
+
+                    if (records.length < 50) {
+                        historyEnd = true;
+                    }
+
+                    records.forEach(rec => {
+                        const item = document.createElement('div');
+                        item.className = 'history-item';
+                        item.id = `history-item-${rec.id}`;
+                        item.title = 'Click to view details';
+
+                        // 1. Content container (date and text)
+                        const contentDiv = document.createElement('div');
+                        contentDiv.className = 'history-item-content';
+
+                        const dateDiv = document.createElement('div');
+                        dateDiv.className = 'history-item-date';
+                        dateDiv.textContent = rec.timestamp;
+                        contentDiv.appendChild(dateDiv);
+
+                        const textDiv = document.createElement('div');
+                        textDiv.className = 'history-item-text';
+                        const cleanText = (rec.refined_text || '').replace(/\s+/g, ' ').trim();
+                        textDiv.textContent = cleanText + '...';
+                        contentDiv.appendChild(textDiv);
+
+                        item.appendChild(contentDiv);
+
+                        // 2. Action buttons container (Copy + Delete, text-free, icons only)
+                        const actionsDiv = document.createElement('div');
+                        actionsDiv.className = 'history-item-row-actions';
+
+                        const copyBtn = document.createElement('button');
+                        copyBtn.className = 'row-action-btn copy-btn';
+                        copyBtn.title = 'Copy refined text';
+                        copyBtn.innerHTML = '📋';
+                        copyBtn.addEventListener('click', (e) => {
+                            e.stopPropagation(); // Prevent modal opening
+                            navigator.clipboard.writeText(rec.refined_text).then(() => {
+                                const originalIcon = copyBtn.innerHTML;
+                                copyBtn.innerHTML = '✅';
+                                setTimeout(() => {
+                                    copyBtn.innerHTML = originalIcon;
+                                }, 1500);
+                            }).catch(err => {
+                                console.error('Failed to copy text: ', err);
+                            });
+                        });
+                        actionsDiv.appendChild(copyBtn);
+
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'row-action-btn delete-btn';
+                        deleteBtn.title = 'Delete entry';
+                        deleteBtn.innerHTML = '🗑️';
+                        deleteBtn.addEventListener('click', (e) => {
+                            e.stopPropagation(); // Prevent modal opening
+                            deleteHistoryItem(rec.id);
+                        });
+                        actionsDiv.appendChild(deleteBtn);
+
+                        item.appendChild(actionsDiv);
+
+                        // Click to open detail overlay modal
+                        item.addEventListener('click', () => {
+                            openHistoryDetail(rec);
+                        });
+
+                        list.appendChild(item);
+                    });
+
+                    historyPage++;
+                })
+                .catch(err => {
+                    historyLoading = false;
+                    console.error('Failed to load history:', err);
+                    list.innerHTML = `
+                        <div class="empty-state">
+                            <span class="empty-icon" style="color: var(--accent-red)">⚠️</span>
+                            <p style="color: var(--accent-red)">Error loading history</p>
+                            <span class="empty-sub">${escapeHtml(err)}</span>
+                        </div>
+                    `;
+                });
+        }
+
+        function handleHistoryScroll(e) {
+            const container = e.target;
+            if (container.scrollHeight - container.scrollTop <= container.clientHeight + 40) {
+                loadHistory(true);
+            }
+        }
+
+        function openHistoryDetail(rec) {
+            const overlay = document.getElementById('history-detail-overlay');
+            document.getElementById('history-detail-raw').textContent = rec.raw_transcription;
+            document.getElementById('history-detail-refined').textContent = rec.refined_text;
+            document.getElementById('history-detail-time').textContent = rec.timestamp;
+
+            // Format agent badge display
+            const agentBadge = document.getElementById('history-detail-agent');
+            agentBadge.textContent = 'Agent: ' + rec.agent_id;
+
+            // Setup clone button copy handler
+            const copyBtn = document.getElementById('history-detail-copy-btn');
+            const newCopyBtn = copyBtn.cloneNode(true);
+            copyBtn.parentNode.replaceChild(newCopyBtn, copyBtn);
+            newCopyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(rec.refined_text).then(() => {
+                    const originalText = newCopyBtn.innerHTML;
+                    newCopyBtn.innerHTML = '✅ Copied!';
+                    newCopyBtn.style.color = 'var(--accent-green)';
+                    setTimeout(() => {
+                        newCopyBtn.innerHTML = originalText;
+                        newCopyBtn.style.color = '';
+                    }, 1500);
+                }).catch(err => {
+                    console.error('Failed to copy Refined output: ', err);
+                });
+            });
+
+            // Setup clone button delete handler
+            const deleteBtn = document.getElementById('history-detail-delete-btn');
+            const newDeleteBtn = deleteBtn.cloneNode(true);
+            deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+            newDeleteBtn.addEventListener('click', () => {
+                deleteHistoryItem(rec.id);
+                closeHistoryDetail();
+            });
+
+            overlay.classList.add('visible');
+        }
+
+        function closeHistoryDetail() {
+            const overlay = document.getElementById('history-detail-overlay');
+            if (overlay) {
+                overlay.classList.remove('visible');
+            }
+        }
+
+        function deleteHistoryItem(id) {
+            invokeCommand('delete_history_item', { id })
+                .then(() => {
+                    const item = document.getElementById(`history-item-${id}`);
+                    if (item) {
+                        item.style.opacity = '0';
+                        item.style.transform = 'translateX(20px)';
+                        setTimeout(() => {
+                            item.remove();
+                            const list = document.getElementById('history-list');
+                            if (list && list.children.length === 0) {
+                                loadHistory(false);
+                            }
+                        }, 300);
+                    }
+                })
+                .catch(err => {
+                    alert('Failed to delete history record: ' + err);
+                });
+        }
+
+        // ─── Modal Dialog Handling ───
+        function confirmClearHistory() {
+            document.getElementById('clear-history-modal').classList.add('visible');
+        }
+
+        function closeClearHistoryModal() {
+            document.getElementById('clear-history-modal').classList.remove('visible');
+        }
+
+        function executeClearHistory() {
+            invokeCommand('clear_history')
+                .then(() => {
+                    closeClearHistoryModal();
+                    loadHistory(false);
+                })
+                .catch(err => {
+                    alert('Failed to clear history database: ' + err);
+                });
+        }
+
+        function showAboutModal() {
+            document.getElementById('about-modal').classList.add('visible');
+        }
+
+        function closeAboutModal() {
+            document.getElementById('about-modal').classList.remove('visible');
+        }
+
+        // Expose to window so Rust eval can call it
+        window.showAboutModal = showAboutModal;
+
+        function openRepoLink() {
+            if (window.__TAURI__) {
+                window.__TAURI__.core.invoke('open_url', { url: 'https://github.com/mo0rych0k/klekit-mac' });
+            } else {
+                window.open('https://github.com/mo0rych0k/klekit-mac', '_blank');
+            }
+        }
+
+        document.getElementById('history-list').addEventListener('scroll', handleHistoryScroll);
+
+
+        // ─── Helper Functions ───
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // ─── Setup agent-status-change Tauri event listener ───
+        if (window.__TAURI__) {
+            window.__TAURI__.event.listen('agent-status-change', (event) => {
+                const { agent_id, status } = event.payload;
+
+                // Clear state classes from all sidebar cells
+                document.querySelectorAll('.agent-list-item').forEach(item => {
+                    item.classList.remove('listening', 'transcribing', 'refining', 'success');
+                    const statusTextEl = item.querySelector('.agent-list-status');
+                    if (statusTextEl) statusTextEl.remove();
+                });
+
+                // Clear state classes from all active agent status dots
+                document.querySelectorAll('.agent-status-dot').forEach(dot => {
+                    dot.className = 'agent-status-dot idle';
+                });
+
+                if (status && status !== 'idle') {
+                    let targetAgentId = agent_id;
+                    if (!targetAgentId) {
+                        targetAgentId = activeAgentId;
+                    }
+
+                    const item = document.getElementById(`agent-item-${targetAgentId}`);
+                    if (item) {
+                        item.classList.add(status);
+
+                        let label = '';
+                        if (status === 'listening') label = '● Listening';
+                        else if (status === 'transcribing') label = '● Transcribing';
+                        else if (status === 'refining') label = '● Refining';
+                        else if (status === 'success') label = '✔ Success';
+
+                        let statusTextEl = item.querySelector('.agent-list-status');
+                        if (!statusTextEl) {
+                            statusTextEl = document.createElement('div');
+                            statusTextEl.className = 'agent-list-status';
+                            item.appendChild(statusTextEl);
+                        }
+                        statusTextEl.innerText = label;
+                    }
+
+                    // Update active agent status dot color/animation
+                    const dot = document.getElementById(`agent-dot-${targetAgentId}`);
+                    if (dot) {
+                        dot.className = `agent-status-dot ${status}`;
+                    }
+                }
+            });
+        }
+
+        // ─── Custom Dropdown Controllers ───
+        const PINNED_CODES = ['en', 'uk', 'de', 'es', 'fr', 'it'];
+
+        function renderCustomDropdown(type, currentValue) {
+            const listEl = document.getElementById(`${type}-options-list`);
+            const triggerValEl = document.getElementById(`selected-${type}-val`);
+            if (!listEl || !triggerValEl) return;
+
+            let html = '';
+
+            // 1. Add Default Option
+            if (type === 'stt') {
+                const isSelected = currentValue === 'auto';
+                const label = t('auto_detect');
+                html += `
+                    <div class="dropdown-option ${isSelected ? 'selected' : ''}" data-value="auto" onclick="selectLanguageOption('stt', 'auto', '🌐 ' + escapeJsString(t('auto_detect')))">
+                        <span>🌐</span> <span>${escapeHtml(label)}</span>
+                    </div>
+                `;
+                if (isSelected) {
+                    triggerValEl.innerHTML = `<span>🌐</span> <span>${escapeHtml(label)}</span>`;
+                }
+            } else {
+                const isSelected = currentValue === 'No Translation';
+                const label = t('no_translation');
+                html += `
+                    <div class="dropdown-option ${isSelected ? 'selected' : ''}" data-value="No Translation" onclick="selectLanguageOption('target', 'No Translation', '🚫 ' + escapeJsString(t('no_translation')))">
+                        <span>🚫</span> <span>${escapeHtml(label)}</span>
+                    </div>
+                `;
+                if (isSelected) {
+                    triggerValEl.innerHTML = `<span>🚫</span> <span>${escapeHtml(label)}</span>`;
+                }
+            }
+
+            // 2. Add Pinned/Common Section
+            html += `<div class="dropdown-section-title">${escapeHtml(t('section_pinned'))}</div>`;
+            PINNED_CODES.forEach(code => {
+                const lang = WHISPER_LANGUAGES.find(l => l.code === code);
+                if (lang) {
+                    const matchVal = type === 'stt' ? lang.code : lang.name;
+                    const isSelected = currentValue === matchVal;
+                    html += `
+                        <div class="dropdown-option ${isSelected ? 'selected' : ''}" data-value="${matchVal}" onclick="selectLanguageOption('${type}', '${escapeJsString(matchVal)}', '${lang.flag} ${escapeJsString(lang.name)}')">
+                            <span>${lang.flag}</span> <span>${lang.name} <span style="font-size: 10px; opacity: 0.6;">(${lang.code})</span></span>
+                        </div>
+                    `;
+                    if (isSelected) {
+                        triggerValEl.innerHTML = `<span>${lang.flag}</span> <span>${lang.name}</span>`;
+                    }
+                }
+            });
+
+            // 3. Add All Languages Section
+            html += `<div class="dropdown-section-title">${escapeHtml(t('section_all_languages'))}</div>`;
+            // Sort alphabetically by English name
+            const sortedLangs = [...WHISPER_LANGUAGES].sort((a, b) => a.name.localeCompare(b.name));
+            sortedLangs.forEach(lang => {
+                const matchVal = type === 'stt' ? lang.code : lang.name;
+                const isSelected = currentValue === matchVal;
+                html += `
+                    <div class="dropdown-option ${isSelected ? 'selected' : ''}" data-value="${matchVal}" onclick="selectLanguageOption('${type}', '${escapeJsString(matchVal)}', '${lang.flag} ${escapeJsString(lang.name)}')">
+                        <span>${lang.flag}</span> <span>${lang.name} <span style="font-size: 10px; opacity: 0.6;">(${lang.code})</span></span>
+                    </div>
+                `;
+                if (isSelected) {
+                    triggerValEl.innerHTML = `<span>${lang.flag}</span> <span>${lang.name}</span>`;
+                }
+            });
+
+            listEl.innerHTML = html;
+        }
+
+        function toggleDropdown(type, event) {
+            if (event) event.stopPropagation();
+
+            // Close other dropdowns
+            const targetType = type === 'stt' ? 'target' : 'stt';
+            const otherEl = document.getElementById(`dropdown-agent-${targetType}`);
+            if (otherEl) otherEl.classList.remove('open', 'open-upward');
+
+            const dropdownEl = document.getElementById(`dropdown-agent-${type}`);
+            if (!dropdownEl) return;
+
+            const isOpen = dropdownEl.classList.contains('open');
+
+            if (!isOpen) {
+                // Determine opening direction based on space below trigger
+                const rect = dropdownEl.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                // If space below is less than 210px (dropdown menu height), open upward
+                if (spaceBelow < 210) {
+                    dropdownEl.classList.add('open-upward');
+                } else {
+                    dropdownEl.classList.remove('open-upward');
+                }
+
+                dropdownEl.classList.add('open');
+
+                // Autofocus search input
+                const searchInput = dropdownEl.querySelector('.dropdown-search-input');
+                if (searchInput) {
+                    searchInput.value = '';
+                    searchInput.focus();
+                    filterDropdown(type, '');
+                }
+            } else {
+                dropdownEl.classList.remove('open', 'open-upward');
+            }
+        }
+
+        function filterDropdown(type, query) {
+            const listEl = document.getElementById(`${type}-options-list`);
+            if (!listEl) return;
+
+            const q = query.toLowerCase().trim();
+            const options = listEl.querySelectorAll('.dropdown-option');
+            const sections = listEl.querySelectorAll('.dropdown-section-title');
+
+            let visibleCount = 0;
+
+            options.forEach(opt => {
+                const txt = opt.innerText.toLowerCase();
+                const val = opt.getAttribute('data-value').toLowerCase();
+                if (txt.includes(q) || val.includes(q)) {
+                    opt.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    opt.style.display = 'none';
+                }
+            });
+
+            // Hide section headers during search to save space
+            sections.forEach(sec => {
+                sec.style.display = q === '' ? 'block' : 'none';
+            });
+
+            // Handle empty search results state
+            let noResultsEl = listEl.querySelector('.dropdown-no-results');
+            if (visibleCount === 0) {
+                if (!noResultsEl) {
+                    noResultsEl = document.createElement('div');
+                    noResultsEl.className = 'dropdown-no-results';
+                    noResultsEl.textContent = 'No matching languages';
+                    listEl.appendChild(noResultsEl);
+                }
+                noResultsEl.style.display = 'block';
+            } else if (noResultsEl) {
+                noResultsEl.style.display = 'none';
+            }
+        }
+
+        function selectLanguageOption(type, value, displayHtml) {
+            const triggerValEl = document.getElementById(`selected-${type}-val`);
+            if (triggerValEl) {
+                triggerValEl.innerHTML = displayHtml;
+            }
+
+            const dropdownEl = document.getElementById(`dropdown-agent-${type}`);
+            if (dropdownEl) {
+                dropdownEl.classList.remove('open', 'open-upward');
+            }
+
+            // Save settings via existing controller
+            const field = type === 'stt' ? 'stt_language' : 'target_language';
+            updateAgentField(field, value);
+        }
+
+        // Global click listener to close dropdowns when clicking outside
+        document.addEventListener('click', function (e) {
+            document.querySelectorAll('.custom-dropdown').forEach(dropdownEl => {
+                if (!dropdownEl.contains(e.target)) {
+                    dropdownEl.classList.remove('open', 'open-upward');
+                }
+            });
+        });
+
+        // ─── Initialization ───
+        document.addEventListener('DOMContentLoaded', async () => {
+            await updateUiLanguage();
+            await loadSettings();
+            // Pre-fetch history page silently in background
+            loadHistory(false);
+        });
+    </script>
+</body>
+
+</html>

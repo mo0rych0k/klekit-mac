@@ -1,0 +1,1 @@
+JSON, HTML, XML, CSS, REST API, HTTP, SQL, NoSQL, Git, GitHub, GitLab, VS Code, IDE, Docker, Kubernetes, AWS, GCP, Azure, macOS, Windows, Linux, iOS, Android, Rust, Cargo, Tauri, JavaScript, TypeScript, React, Next.js, Python, Java, C++, YAML, TOML

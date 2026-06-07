@@ -1,0 +1,58 @@
+[package]
+name = "klekit"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = [
+    ".",
+    "src-tauri"
+]
+
+[lib]
+name = "klekit"
+path = "src/lib.rs"
+
+
+[dependencies]
+# Wrapper for whisper.cpp
+whisper-rs = "0.11" 
+
+# SQLite Database
+rusqlite = { version = "0.31.0", features = ["bundled"] }
+
+# For test temp directories
+tempfile = "3.10.0"
+
+# TOML parsing for blueprints
+toml = "0.8"
+
+# Library for reading/writing WAV files (needed for testing)
+hound = "3.5" 
+
+# For convenient error handling
+anyhow = "1.0"
+
+# Local LLM Gemma 2
+llama-cpp-2 = { version = "0.1", features = ["metal"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Audio capture
+cpal = "0.15"
+
+# Safe lock-free channels
+crossbeam-channel = "0.5"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# ── macOS-only dependencies ──────────────────────────────────────────────────
+[target.'cfg(target_os = "macos")'.dependencies]
+# Clipboard access for os_integration::inject_text (writes text to General Pasteboard)
+arboard = "3.4"
+# Low-level Core Graphics bindings for CGEventPost (synthesizes Cmd+V at the HID level)
+# No "Automation" permission required — only Accessibility (already needed for rdev mouse listener)
+core-graphics = "0.25"

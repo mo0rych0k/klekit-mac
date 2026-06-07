@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "KleKit",
+  "version": "0.1.0",
+  "identifier": "com.klekit.app",
+  "build": {
+    "frontendDist": "../ui",
+    "beforeDevCommand": "cargo build --bin llm_refiner && cp target/debug/llm_refiner bin/llm_refiner",
+    "beforeBuildCommand": "cargo build --bin llm_refiner --release && cp target/release/llm_refiner bin/llm_refiner"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "KleKit",
+        "width": 800,
+        "height": 580,
+        "minWidth": 600,
+        "minHeight": 400,
+        "resizable": true,
+        "fullscreen": false,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "app"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns"
+    ],
+    "resources": [
+      "../models/ggml-small.bin",
+      "../models/gemma-2-2b-it-Q6_K.gguf",
+      "../bin/llm_refiner"
+    ],
+    "macOS": {
+      "entitlements": "entitlements.plist",
+      "infoPlist": "Info.plist",
+      "minimumSystemVersion": "11.0"
+    }
+  }
+}

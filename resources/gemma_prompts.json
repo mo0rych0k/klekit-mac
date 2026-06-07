@@ -1,0 +1,527 @@
+{
+  "default_prompt": "You are a high-performance offline text refinement utility.\nYour job is to:\n1. Fix spelling, grammar, and punctuation mistakes in the transcript.\n2. Output the result in {{TARGET_LANGUAGE}}. If the input is in a different language, translate it.\n3. If technical terms or code fragments are present, apply proper formatting (like code syntax or markdown).\n4. Strictly output ONLY the corrected/translated text. Do NOT add any introductions, explanations, thoughts, notes, or markdown wrappers.",
+  "presets": [
+    {
+      "id": "None",
+      "icon": "🚫",
+      "translations": {
+        "en": {
+          "title": "No Preset",
+          "subtitle": "Strictly use only the custom system prompt addon without any preset template instructions."
+        },
+        "es": {
+          "title": "Sin ajuste predeterminado",
+          "subtitle": "Usar estrictamente solo el complemento de instrucción de sistema personalizado sin instrucciones de plantilla predefinidas."
+        },
+        "fr": {
+          "title": "Aucun préréglage",
+          "subtitle": "Utiliser strictement uniquement le prompt système personnalisé sans aucune instruction de modèle prédéfinie."
+        },
+        "de": {
+          "title": "Keine Voreinstellung",
+          "subtitle": "Ausschließlich das benutzerdefinierte System-Prompt-Add-on ohne voreingestellte Vorlagenanweisungen verwenden."
+        },
+        "zh": {
+          "title": "无预设",
+          "subtitle": "仅严格使用自定义系统提示词插件，而不使用任何预设的模板指令。"
+        },
+        "ja": {
+          "title": "プリセットなし",
+          "subtitle": "プリセットされたテンプレート指示なしで、カスタムシステムプロンプトのアドオンのみを厳格に使用します。"
+        },
+        "ko": {
+          "title": "프리셋 없음",
+          "subtitle": "프리셋 템플릿 지침 없이 사용자 지정 시스템 프롬프트 애드온만 엄격하게 사용합니다."
+        },
+        "ar": {
+          "title": "بدون إعداد مسبق",
+          "subtitle": "اقتصار الاستخدام بدقة على إضافة التوجيه المخصص للنظام دون أي تعليمات قالب معدة مسبقًا."
+        },
+        "hi": {
+          "title": "कोई प्रीसेट नहीं",
+          "subtitle": "बिना किसी प्रीसेट टेम्प्लेट निर्देशों के केवल कस्टम सिस्टम प्रॉम्प्ट एडऑन का कड़ाई से उपयोग करें।"
+        },
+        "pt": {
+          "title": "Sem predefinição",
+          "subtitle": "Usar estritamente apenas o complemento de prompt do sistema personalizado, sem instruções de modelo predefinidas."
+        },
+        "it": {
+          "title": "Nessun preset",
+          "subtitle": "Utilizzare rigorosamente solo l'add-on del prompt di sistema personalizzato senza istruzioni di modello preimpostate."
+        },
+        "nl": {
+          "title": "Geen voorinstelling",
+          "subtitle": "Gebruik strikt alleen de aangepaste systeemprompt-add-on zonder vooraf ingestelde sjablooninstructies."
+        },
+        "pl": {
+          "title": "Brak ustawienia",
+          "subtitle": "Używaj wyłącznie własnego niestandardowego dodatku do instrukcji systemowych, bez żadnych gotowych szablonów."
+        },
+        "tr": {
+          "title": "Şablon Yok",
+          "subtitle": "Önceden ayarlanmış herhangi bir şablon talimatı olmadan yalnızca özel sistem yönergesi eklentisini kullanın."
+        },
+        "vi": {
+          "title": "Không có cài đặt sẵn",
+          "subtitle": "Chỉ sử dụng phần bổ sung prompt hệ thống tùy chỉnh mà không có bất kỳ hướng dẫn mẫu cài đặt sẵn nào."
+        },
+        "id": {
+          "title": "Tanpa Preset",
+          "subtitle": "Hanya gunakan add-on prompt sistem khusus tanpa instruksi templat preset apa pun."
+        },
+        "th": {
+          "title": "ไม่มีค่าล่วงหน้า",
+          "subtitle": "ใช้เฉพาะส่วนเสริมคำสั่งระบบที่กำหนดเองเท่านั้น โดยไม่มีคำแนะนำเทมเพลตที่ตั้งค่าไว้ล่วงหน้า"
+        },
+        "sv": {
+          "title": "Ingen förinställning",
+          "subtitle": "Använd strikt endast det anpassade systemprompt-tillägget utan några förinställda mallinstruktioner."
+        },
+        "no": {
+          "title": "Ingen forhåndsinnstilling",
+          "subtitle": "Bruk utelukkende det tilpassede systemprompt-tillegget uten noen forhåndsdefinerte malinstruksjoner."
+        },
+        "uk": {
+          "title": "Без пресету",
+          "subtitle": "Використовувати лише власну системну інструкцію без готових шаблонів."
+        }
+      },
+      "prompt": ""
+    },
+    {
+      "id": "fix_errors_only",
+      "icon": "✔️",
+      "translations": {
+        "en": {
+          "title": "Fix Errors Only",
+          "subtitle": "Cleans typos, grammar, and syntax while preserving raw conversational structure."
+        },
+        "es": {
+          "title": "Solo corregir errores",
+          "subtitle": "Corrige errores ortográficos, gramática y sintaxis manteniendo la estructura conversacional original."
+        },
+        "fr": {
+          "title": "Correction d'erreurs uniquement",
+          "subtitle": "Corrige les fautes de frappe, la grammaire et la syntaxe tout en préservant la structure brute de la conversation."
+        },
+        "de": {
+          "title": "Nur Fehler beheben",
+          "subtitle": "Korrigiert Tippfehler, Grammatik und Syntax unter Beibehaltung der rohen Gesprächsstruktur."
+        },
+        "zh": {
+          "title": "仅修复错误",
+          "subtitle": "清理拼写错误、语法和句法，同时保留原始的对话结构。"
+        },
+        "ja": {
+          "title": "エラー修正のみ",
+          "subtitle": "生の会話構造を維持しながら、誤字脱字、文法、構文をクリーンアップします."
+        },
+        "ko": {
+          "title": "오류 수정만",
+          "subtitle": "기존의 자연스러운 대화 구조를 유지하면서 오타, 문법 및 구문을 정리합니다."
+        },
+        "ar": {
+          "title": "تصحيح الأخطاء فقط",
+          "subtitle": "تنظيف الأخطاء الإملائية والنحوية والصياغة مع الحفاظ على هيكل المحادثة الأصلي."
+        },
+        "hi": {
+          "title": "केवल गलतियाँ सुधारें",
+          "subtitle": "मूल बोलचाल की संरचना को बनाए रखते हुए टाइपिंग की गलतियों, व्याकरण और वाक्य रचना को साफ करता है।"
+        },
+        "pt": {
+          "title": "Apenas corrigir erros",
+          "subtitle": "Corrige erros de digitação, gramática e sintaxe, preservando a estrutura de conversa original."
+        },
+        "it": {
+          "title": "Solo correzione errori",
+          "subtitle": "Corregge refusi, grammatica e sintassi preservando la struttura originale della conversazione."
+        },
+        "nl": {
+          "title": "Alleen fouten herstellen",
+          "subtitle": "Wist typfouten, corrigeert grammatica en syntaxis met behoud van de ruwe gespreksstructuur."
+        },
+        "pl": {
+          "title": "Tylko poprawianie błędów",
+          "subtitle": "Oczyszcza literówki, gramatykę i składnię, zachowując naturalną strukturę rozmowy."
+        },
+        "tr": {
+          "title": "Yalnızca Hataları Düzelt",
+          "subtitle": "Doğal konuşma yapısını korurken yazım hatalarını, dil bilgisini ve sözdizimini temizler."
+        },
+        "vi": {
+          "title": "Chỉ sửa lỗi",
+          "subtitle": "Làm sạch các lỗi chính tả, ngữ pháp và cú pháp trong khi vẫn giữ nguyên cấu trúc trò chuyện tự nhiên."
+        },
+        "id": {
+          "title": "Hanya Perbaiki Kesalahan",
+          "subtitle": "Membersihkan salah ketik, tata bahasa, dan sintaksis sambil mempertahankan struktur percakapan asli."
+        },
+        "th": {
+          "title": "แก้ไขข้อผิดพลาดเท่านั้น",
+          "subtitle": "แก้ไขคำสะกดผิด ไวยากรณ์ และเครื่องหมายวรรคตอนในบทถอดความ โดยยังคงรักษาโครงสร้างดั้งเดิมไว้"
+        },
+        "sv": {
+          "title": "Endast korrigera fel",
+          "subtitle": "Rättar stavfel, grammatik och syntax med bibehållen rå konversationsstruktur."
+        },
+        "no": {
+          "title": "Kun rett feil",
+          "subtitle": "Renser opp skrivefeil, grammatikk og syntaks mens den rå samtalestrukturen bevares."
+        },
+        "uk": {
+          "title": "Лише виправлення помилок",
+          "subtitle": "Очищає помилки, граматику та синтаксис, зберігаючи природну структуру розмови."
+        }
+      },
+      "prompt": "You are an expert editor. Your task is to fix spelling, grammar, and punctuation mistakes in the transcript. Maintain the original language and informal conversational structure. Do not rewrite the sentences; only fix errors."
+    },
+    {
+      "id": "spoken_to_written",
+      "icon": "📖",
+      "translations": {
+        "en": {
+          "title": "Spoken to Written Transmuter",
+          "subtitle": "Converts raw, informal verbal speech, filtering out filler words into structured written text."
+        },
+        "es": {
+          "title": "Transmutador de hablado a escrito",
+          "subtitle": "Convierte el habla informal y directa en texto escrito estructurado, filtrando las muletillas."
+        },
+        "fr": {
+          "title": "Convertisseur de l'oral à l'écrit",
+          "subtitle": "Convertit la parole verbale brute et informelle en texte écrit structuré, en filtrant les mots de remplissage."
+        },
+        "de": {
+          "title": "Konverter für gesprochene in geschriebene Sprache",
+          "subtitle": "Konvertiert rohe, informelle gesprochene Sprache unter Ausfilterung von Füllwörtern in strukturierten schriftlichen Text."
+        },
+        "zh": {
+          "title": "口语转书面语",
+          "subtitle": "将粗糙、非正式的口头表述转换为结构化的书面文本，过滤掉语气词和废话。"
+        },
+        "ja": {
+          "title": "話し言葉から書き言葉への変換",
+          "subtitle": "生の非公式な口頭での発話を、フィラー単語を取り除いて構造化された書き言葉のテキストに変換します。"
+        },
+        "ko": {
+          "title": "구어체를 문어체로 변환",
+          "subtitle": "불필요한 미사여구나 음성 채움말(filler words)을 필터링하여 일상적인 구어체 통화를 정돈된 문어체 텍스트로 변환합니다."
+        },
+        "ar": {
+          "title": "محول الكلام الشفهي إلى مكتوب",
+          "subtitle": "تحويل الكلام الشفهي غير الرسمي إلى نص مكتوب ومنظم، مع تصفية الكلمات الحشوية."
+        },
+        "hi": {
+          "title": "बोलचाल से लिखित में परिवर्तन",
+          "subtitle": "फालतू के शब्दों को छानकर कच्ची, अनौपचारिक बोलचाल की भाषा को व्यवस्थित लिखित पाठ में बदलता है।"
+        },
+        "pt": {
+          "title": "Transmutador de fala para escrita",
+          "subtitle": "Converte a fala informal direta em texto escrito estruturado, filtrando palavras de preenchimento."
+        },
+        "it": {
+          "title": "Trasformatore da parlato a scritto",
+          "subtitle": "Converte il discorso informale e parlato in testo scritto strutturato, filtrando i riempitivi."
+        },
+        "nl": {
+          "title": "Omzetter van gesproken naar geschreven tekst",
+          "subtitle": "Zet informele gesproken taal om in gestructureerde geschreven tekst, waarbij stopwoorden worden weggefilterd."
+        },
+        "pl": {
+          "title": "Konwerter mowy na tekst pisany",
+          "subtitle": "Przekształca surową, nieformalną mowę potoczną na ustrukturyzowany tekst pisany, usuwając słowa-przerywniki."
+        },
+        "tr": {
+          "title": "Konuşmayı Yazıya Dönüştürücü",
+          "subtitle": "Gereksiz dolgu sözcüklerini filtreleyerek ham, resmi olmayan konuşma dilini yapılandırılmış yazılı metne dönüştürür."
+        },
+        "vi": {
+          "title": "Chuyển đổi văn nói sang văn viết",
+          "subtitle": "Chuyển đổi lời nói trực tiếp, không chính thức thành văn bản viết có cấu trúc, lọc bỏ các từ đệm/từ thừa."
+        },
+        "id": {
+          "title": "Pengubah Lisan ke Tulisan",
+          "subtitle": "Mengubah percakapan lisan yang informal menjadi teks tertulis yang terstruktur, menyaring kata-kata pengisi (filler)."
+        },
+        "th": {
+          "title": "ตัวแปลงภาษาพูดเป็นภาษาเขียน",
+          "subtitle": "แปลงคำพูดที่ไม่เป็นทางการให้กลายเป็นข้อความเขียนที่มีโครงสร้าง โดยกรองคำสร้อยหรือคำเติมเต็มออก"
+        },
+        "sv": {
+          "title": "Muntligt till skriftligt",
+          "subtitle": "Omvandlar rått, informellt tal till strukturerad skriven text och filtrerar bort fyllnadsord."
+        },
+        "no": {
+          "title": "Muntlig til skriftlig omformer",
+          "subtitle": "Konverterer rått, uformelt muntlig tale til strukturert skriftlig tekst, og filtrerer ut fyllord."
+        },
+        "uk": {
+          "title": "Перетворювач усного мовлення на письмове",
+          "subtitle": "Перетворює сире розмовне мовлення, фільтруючи слова-паразити, на структурований письмовий текст."
+        }
+      },
+      "prompt": "You are an expert editor. Your task is to take raw, informal verbal transcriptions and transmute them into clean, structured, and formal written text. Filter out filler words. Maintain original meaning, but make it read like polished written prose."
+    },
+    {
+      "id": "workspace_sync",
+      "icon": "💬",
+      "translations": {
+        "en": {
+          "title": "Workspace Sync",
+          "subtitle": "Polishes internal team communication, balancing corporate, technical, and slang terms for Slack/Jira."
+        },
+        "es": {
+          "title": "Sincronización de espacio de trabajo",
+          "subtitle": "Pule la comunicación interna del equipo, equilibrando términos corporativos, técnicos y jerga para Slack/Jira."
+        },
+        "fr": {
+          "title": "Synchro de l'espace de travail",
+          "subtitle": "Peaufine la communication interne de l'équipe, en équilibrant les termes d'entreprise, techniques et l'argot pour Slack/Jira."
+        },
+        "de": {
+          "title": "Workspace-Synchronisation",
+          "subtitle": "Verfeinert die interne Teamkommunikation und balanciert Unternehmens-, Fach- und Slangbegriffe für Slack/Jira aus."
+        },
+        "zh": {
+          "title": "工作区同步",
+          "subtitle": "润色团队内部沟通内容，平衡适用于 Slack/Jira 的行业黑话、技术术语和口语。"
+        },
+        "ja": {
+          "title": "ワークスペース同期",
+          "subtitle": "社内用語、技術用語、スラングのバランスを取りながら、SlackやJira向けのチーム内コミュニケーションを洗練させます。"
+        },
+        "ko": {
+          "title": "워크스페이스 동기화",
+          "subtitle": "Slack/Jira용 기업 전문 용어, 기술 용어, 은어의 균형을 맞추어 팀 내부 커뮤니케이션을 다듬습니다."
+        },
+        "ar": {
+          "title": "مزامنة مساحة العمل",
+          "subtitle": "صقل اتصالات الفريق الداخلية، مع تحقيق التوازن بين المصطلحات المهنية والتقنية والعامية لتناسب Slack/Jira."
+        },
+        "hi": {
+          "title": "कार्यक्षेत्र सिंक",
+          "subtitle": "Slack/Jira के लिए कॉर्पोरेट, तकनीकी और कठबोली (slang) शब्दों को संतुलित करते हुए आंतरिक टीम संचार को बेहतर बनाता है।"
+        },
+        "pt": {
+          "title": "Sincronização de espaço de trabalho",
+          "subtitle": "Aprimora a comunicação interna da equipe, equilibrando termos corporativos, técnicos e gírias para Slack/Jira."
+        },
+        "it": {
+          "title": "Sincronizzazione spazio di lavoro",
+          "subtitle": "Perfeziona la comunicazione interna del team, bilanciando termini aziendali, tecnici e gergali per Slack/Jira."
+        },
+        "nl": {
+          "title": "Werkruimtesynchronisatie",
+          "subtitle": "Verfijnt de interne teamcommunicatie met een balans tussen zakelijke, technische en jargontermen voor Slack/Jira."
+        },
+        "pl": {
+          "title": "Synchronizacja obszaru roboczego",
+          "subtitle": "Dopracowuje wewnętrzną komunikację zespołową, balansując terminy korporacyjne, techniczne i slang na potrzeby Slack/Jira."
+        },
+        "tr": {
+          "title": "Çalışma Alanı Eşitleme",
+          "subtitle": "Slack/Jira için kurumsal, teknik ve argo terimleri dengeleyerek iç ekip iletişimini düzenler."
+        },
+        "vi": {
+          "title": "Đồng bộ không gian làm việc",
+          "subtitle": "Trau chuốt giao tiếp nội bộ nhóm, cân bằng giữa các thuật ngữ doanh nghiệp, kỹ thuật và tiếng lóng cho Slack/Jira."
+        },
+        "id": {
+          "title": "Sinkronisasi Ruang Kerja",
+          "subtitle": "Memperjelas komunikasi internal tim, menyeimbangkan istilah korporat, teknis, dan bahasa gaul untuk Slack/Jira."
+        },
+        "th": {
+          "title": "ซิงค์พื้นที่ทำงาน",
+          "subtitle": "ปรับแต่งการสื่อสารภายในทีม โดยรักษาสมดุลของคำศัพท์องค์กร ศัพท์เทคนิค และคำสแลงสำหรับ Slack/Jira"
+        },
+        "sv": {
+          "title": "Synkronisering av arbetsyta",
+          "subtitle": "Finputsar intern teamkommunikation, balanserar företags-, teknik- och slangtermer för Slack/Jira."
+        },
+        "no": {
+          "title": "Arbeidsområde-synkronisering",
+          "subtitle": "Polerer intern teamkommunikasjon, og balanserer bedrifts-, tekniske og slanguttrykk for Slack/Jira."
+        },
+        "uk": {
+          "title": "Синхронізація робочого простору",
+          "subtitle": "Полірує внутрішню командну комунікацію, балансуючи корпоративні, технічні та сленгові терміни для Slack/Jira."
+        }
+      },
+      "prompt": "You are a Slack communication refiner. Polishes internal team communication, balancing corporate, technical, and slang terms. Keep the tone friendly, professional, and clear."
+    },
+    {
+      "id": "formal_directive",
+      "icon": "💼",
+      "translations": {
+        "en": {
+          "title": "Formal Directive",
+          "subtitle": "Transforms words into strict, highly formal, professional, or legal-sounding syntax."
+        },
+        "es": {
+          "title": "Directiva formal",
+          "subtitle": "Transforma las palabras en una sintaxis estricta, altamente formal, profesional o con tono legal."
+        },
+        "fr": {
+          "title": "Directive formelle",
+          "subtitle": "Transforme les mots en une syntaxe stricte, hautement formelle, professionnelle ou à consonance juridique."
+        },
+        "de": {
+          "title": "Formelle Richtlinie",
+          "subtitle": "Transformiert Wörter in eine strenge, hochgradig formelle, professionelle oder rechtlich klingende Syntax."
+        },
+        "zh": {
+          "title": "正式呈文",
+          "subtitle": "将言语转化为严谨、高度正式、专业或具有法律效力的句法。"
+        },
+        "ja": {
+          "title": "公式・厳格な表現",
+          "subtitle": "言葉を、厳格で高度に公式な、プロフェッショナルな、または法的な響きを持つ構文に変換します。"
+        },
+        "ko": {
+          "title": "공식 문서 양식",
+          "subtitle": "말투를 격식 있고 고도로 공식적이며 전문적이거나 법률적인 어조의 구문으로 변환합니다."
+        },
+        "ar": {
+          "title": "توجيه رسمي",
+          "subtitle": "تحويل الكلمات إلى صياغة صارمة ورسمية للغاية، أو ذات طابع مهني أو قانوني."
+        },
+        "hi": {
+          "title": "औपचारिक निर्देश",
+          "subtitle": "शब्दों को सख्त, अत्यधिक औपचारिक, पेशेवर या कानूनी रूप से सुनने वाले वाक्य विन्यास में बदलता है।"
+        },
+        "pt": {
+          "title": "Diretriz formal",
+          "subtitle": "Transforma palavras em uma sintaxe estrita, altamente formal, profissional ou de tom jurídico."
+        },
+        "it": {
+          "title": "Direttiva formale",
+          "subtitle": "Trasforma le parole in una sintassi rigorosa, altamente formale, professionale o di tono legale."
+        },
+        "nl": {
+          "title": "Formele richtlijn",
+          "subtitle": "Transformeert woorden in een strikte, zeer formele, professionele of juridisch klinkende syntaxis."
+        },
+        "pl": {
+          "title": "Oficjalna dyrektywa",
+          "subtitle": "Przekształca słowa w ścisłą, wysoce formalną, profesjonalną lub brzmiącą prawniczo składnię."
+        },
+        "tr": {
+          "title": "Resmi Yönerge",
+          "subtitle": "Kelimeleri katı, son derece resmi, profesyonel veya yasal tınlayan bir sözdizimine dönüştürür."
+        },
+        "vi": {
+          "title": "Văn bản chính thức",
+          "subtitle": "Chuyển đổi từ ngữ thành cú pháp nghiêm ngặt, trang trọng, chuyên nghiệp hoặc có tính chất pháp lý."
+        },
+        "id": {
+          "title": "Arahan Formal",
+          "subtitle": "Mengubah kata-kata menjadi sintaksis yang ketat, sangat formal, profesional, atau bernada hukum."
+        },
+        "th": {
+          "title": "คำสั่งที่เป็นทางการ",
+          "subtitle": "แปลงคำพูดให้เป็นโครงสร้างประโยคที่เข้มงวด เป็นทางการสูง เป็นมืออาชีพ หรือคล้ายภาษากฎหมาย"
+        },
+        "sv": {
+          "title": "Formellt direktiv",
+          "subtitle": "Omvandlar ord till en strikt, mycket formell, professionell eller juridiskt klingande syntax."
+        },
+        "no": {
+          "title": "Formelt direktiv",
+          "subtitle": "Transformerer ord til en streng, svært formell, profesjonell eller juridisk-klingende syntaks."
+        },
+        "uk": {
+          "title": "Офіційна директива",
+          "subtitle": "Перетворює слова на строгий, офіційно-діловий, професійний або юридичний синтаксис."
+        }
+      },
+      "prompt": "You are a professional scribe. Rewrite the text into strict, highly formal, and professional syntax. Use formal business English, elevate vocabulary, and correct any grammatical errors."
+    },
+    {
+      "id": "prompt_smith",
+      "icon": "💻",
+      "translations": {
+        "en": {
+          "title": "Prompt Smith",
+          "subtitle": "Transforms rough ideas into structured markdown/XML instructions for engineering other AI models."
+        },
+        "es": {
+          "title": "Forjador de prompts",
+          "subtitle": "Transforma ideas aproximadas en instrucciones estructuradas de markdown/XML para diseñar otros modelos de IA."
+        },
+        "fr": {
+          "title": "Forgeron de prompts",
+          "subtitle": "Transforme des idées brutes en instructions markdown/XML structurées pour concevoir d'autres modèles d'IA."
+        },
+        "de": {
+          "title": "Prompt-Schmied",
+          "subtitle": "Transformiert grobe Ideen in strukturierte Markdown-/XML-Anweisungen zur Entwicklung anderer KI-Modelle."
+        },
+        "zh": {
+          "title": "提示词构建师",
+          "subtitle": "将粗糙的想法转化为结构化的 Markdown/XML 指令，用于构建和微调其他 AI 模型。"
+        },
+        "ja": {
+          "title": "プロンプト職人",
+          "subtitle": "大まかなアイデアを、他のAIモデルをエンジニアリングするための構造化されたマークダウン/XML指示に変換します。"
+        },
+        "ko": {
+          "title": "프롬프트 제작소",
+          "subtitle": "대략적인 아이디어를 다른 AI 모델 개발에 적합한 구조화된 마크다운/XML 지침으로 변환합니다."
+        },
+        "ar": {
+          "title": "صانع التوجيهات",
+          "subtitle": "تحويل الأفكار التقريبية إلى تعليمات مخصصة بتنسيق markdown/XML لتوجيه وهندسة نماذج الذكاء الاصطناعي الأخرى."
+        },
+        "hi": {
+          "title": "प्रॉम्प्ट निर्माता",
+          "subtitle": "अन्य AI मॉडल बनाने के लिए कच्चे विचारों को संरचित मार्कडाउन/XML निर्देशों में बदलता है।"
+        },
+        "pt": {
+          "title": "Forjador de prompts",
+          "subtitle": "Transforma ideias gerais em instruções estruturadas em markdown/XML para engenharia de outros modelos de IA."
+        },
+        "it": {
+          "title": "Fabbro dei prompt",
+          "subtitle": "Trasforma idee approssimative in istruzioni markdown/XML strutturate per la progettazione di altri modelli di IA."
+        },
+        "nl": {
+          "title": "Prompt-smid",
+          "subtitle": "Transformeert ruwe ideeën in gestructureerde markdown/XML-instructies voor het ontwikkelen van andere AI-modellen."
+        },
+        "pl": {
+          "title": "Kowal promptów",
+          "subtitle": "Przekształca surowe pomysły w ustrukturyzowane instrukcje markdown/XML do projektowania innych modeli sztucznej inteligencji."
+        },
+        "tr": {
+          "title": "Yönerge Tasarımcısı",
+          "subtitle": "Kaba fikirleri, diğer yapay zeka modellerini tasarlamak için yapılandırılmış markdown/XML talimatlarına dönüştürür."
+        },
+        "vi": {
+          "title": "Thợ rèn prompt",
+          "subtitle": "Chuyển đổi các ý tưởng thô thành hướng dẫn định dạng markdown/XML có cấu trúc để thiết kế các mô hình AI khác."
+        },
+        "id": {
+          "title": "Pembuat Prompt",
+          "subtitle": "Mengubah ide kasar menjadi instruksi markdown/XML terstruktur untuk merekayasa model AI lainnya."
+        },
+        "th": {
+          "title": "ช่างสร้างคำสั่ง",
+          "subtitle": "แปลงไอเดียคร่าวๆ ให้เป็นคำสั่งในรูปแบบ markdown/XML ที่มีโครงสร้าง สำหรับการเขียนคำสั่งให้โมเดล AI อื่นๆ"
+        },
+        "sv": {
+          "title": "Prompt-smed",
+          "subtitle": "Omvandlar grova idéer till strukturerade markdown/XML-instruktioner för att utveckla andra AI-modeller."
+        },
+        "no": {
+          "title": "Prompt-smed",
+          "subtitle": "Transformerer grove ideer til strukturerde markdown/XML-instruksjoner for utvikling av andre AI-modeller."
+        },
+        "uk": {
+          "title": "Коваль промтів",
+          "subtitle": "Перетворює сирі ідеї на структуровані інструкції markdown/XML для створення інших моделей ШІ."
+        }
+      },
+      "prompt": "You are a prompt engineer. Convert the spoken transcript describing an LLM prompt request into a detailed, structured system prompt template formatted in clean markdown code blocks with clear headings and system context."
+    }
+  ]
+}

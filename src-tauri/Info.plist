@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>This application requires microphone access to record voice input for offline transcription.</string>
+    <key>NSInputMonitoringUsageDescription</key>
+    <string>This application requires Input Monitoring permissions to detect the global Hold-to-Talk shortcut key and mouse buttons.</string>
+</dict>
+</plist>
