@@ -138,14 +138,6 @@ cargo test
 
 ---
 
-## 💝 Support & Sponsorship
-
-If you find KleKit useful and want to support its development, you can donate via Donatello:
-
-[![Support via Donatello](https://img.shields.io/badge/Support-Donatello-FF8A65?style=for-the-badge&logo=heart&logoColor=white)](https://donatello.to/SerhiyPylypyshko)
-
----
-
 ## 📄 License
 
 MIT © [mo0rych0k](https://github.com/mo0rych0k) - [MIT License Terms](https://opensource.org/licenses/MIT)
