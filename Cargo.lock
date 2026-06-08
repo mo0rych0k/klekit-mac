@@ -2131,6 +2131,7 @@ dependencies = [
 name = "klekit-tauri"
 version = "0.1.0"
 dependencies = [
+ "arboard",
  "block2 0.5.1",
  "crossbeam-channel",
  "klekit",

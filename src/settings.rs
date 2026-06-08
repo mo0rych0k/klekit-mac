@@ -24,6 +24,8 @@ pub struct AppSettings {
     pub enable_auto_paste: bool,
     #[serde(default = "default_true")]
     pub enable_sounds: bool,
+    #[serde(default = "default_false")]
+    pub enable_gemma: bool,
     #[serde(default = "default_voice_hotkey_type")]
     pub voice_hotkey_type: String,
     #[serde(default = "default_voice_hotkey_value")]
@@ -36,6 +38,10 @@ pub struct AppSettings {
 
 fn default_true() -> bool {
     true
+}
+
+fn default_false() -> bool {
+    false
 }
 
 fn default_voice_hotkey_type() -> String {
@@ -69,6 +75,7 @@ impl Default for AppSettings {
             }],
             enable_auto_paste: true,
             enable_sounds: true,
+            enable_gemma: default_false(),
             voice_hotkey_type: default_voice_hotkey_type(),
             voice_hotkey_value: default_voice_hotkey_value(),
             voice_stt_language: default_voice_stt_language(),

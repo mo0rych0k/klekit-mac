@@ -64,10 +64,36 @@ pub fn inject_text(text: &str) -> Result<()> {
     Ok(())
 }
 
+/// Synthesizes a Cmd+C KeyDown + KeyUp pair to copy selected text to clipboard.
+#[cfg(target_os = "macos")]
+pub fn simulate_copy() -> Result<()> {
+    let source = CGEventSource::new(CGEventSourceStateID::CombinedSessionState)
+        .map_err(|_| anyhow::anyhow!("Failed to create CGEventSource"))?;
+
+    let key_down = CGEvent::new_keyboard_event(source.clone(), 8, true)
+        .map_err(|_| anyhow::anyhow!("Failed to create CGEvent KeyDown"))?;
+    key_down.set_flags(CGEventFlags::CGEventFlagCommand);
+    key_down.post(CGEventTapLocation::HID);
+
+    std::thread::sleep(std::time::Duration::from_millis(50));
+
+    let key_up = CGEvent::new_keyboard_event(source, 8, false)
+        .map_err(|_| anyhow::anyhow!("Failed to create CGEvent KeyUp"))?;
+    key_up.set_flags(CGEventFlags::CGEventFlagCommand);
+    key_up.post(CGEventTapLocation::HID);
+
+    Ok(())
+}
+
 /// Compile-time guard — this module is macOS-exclusive.
 #[cfg(not(target_os = "macos"))]
 pub fn inject_text(_text: &str) -> Result<()> {
     anyhow::bail!("inject_text is only supported on macOS");
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn simulate_copy() -> Result<()> {
+    anyhow::bail!("simulate_copy is only supported on macOS");
 }
 
 /// Plays a short system sound for start, stop, or completion events.
