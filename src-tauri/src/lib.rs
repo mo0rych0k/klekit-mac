@@ -99,7 +99,7 @@ pub fn parse_shortcut(value: &str) -> Option<tauri_plugin_global_shortcut::Short
 }
 
 mod commands {
-    use super::{AppState, AppSettings, parse_shortcut};
+    use super::{AppState, AppSettings, parse_shortcut, rebuild_tray_menu};
     use std::sync::Arc;
     use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
@@ -193,6 +193,9 @@ mod commands {
             let mut lock = state.settings.lock().unwrap();
             *lock = Arc::new(new_settings.clone());
         }
+
+        // Rebuild dynamic status bar tray menu
+        let _ = rebuild_tray_menu(&app);
 
         // Flush asynchronously to SSD config file
         let engine_save = Arc::clone(&state.engine);
@@ -459,6 +462,13 @@ fn run_os_refinement(engine: Arc<VoiceAssistantEngine>, agent_id: String) {
         match engine.run_text_refinement(&clipboard_text, &agent_id) {
             Ok(refined) => {
                 engine.log(format!("[global-refine] Refined text: '{}'", refined));
+                let enable_sounds = {
+                    let lock = engine.settings.lock().unwrap();
+                    lock.enable_sounds
+                };
+                if enable_sounds {
+                    os_integration::play_sound("complete");
+                }
                 if let Err(e) = os_integration::inject_text(&refined) {
                     engine.log(format!("❌ Failed to inject refined text: {:?}", e));
                 }
@@ -615,12 +625,7 @@ pub fn run() {
             }
 
             // 2. System tray menu items
-            let show_dashboard = MenuItemBuilder::with_id("dashboard", "Open Window").build(app)?;
-            let quit_item     = MenuItemBuilder::with_id("quit",      "Exit").build(app)?;
-
-            let menu = MenuBuilder::new(app)
-                .items(&[&show_dashboard, &quit_item])
-                .build()?;
+            let menu = MenuBuilder::new(app).build()?;
 
             // 3. System tray icon
             let mut tray_builder = TrayIconBuilder::with_id("main-tray").menu(&menu);
@@ -639,10 +644,22 @@ pub fn run() {
                                 let _ = w.set_focus();
                             }
                         }
-                        _ => {}
+                        other_id => {
+                            let state: tauri::State<'_, AppState> = app_handle.state();
+                            let settings = {
+                                let lock = state.settings.lock().unwrap();
+                                Arc::clone(&*lock)
+                            };
+                            if settings.agents.iter().any(|a| a.id == other_id) {
+                                run_os_refinement(state.engine.clone(), other_id.to_string());
+                            }
+                        }
                     }
                 })
                 .build(app)?;
+
+            // Rebuild the menu with configurations
+            let _ = rebuild_tray_menu(app.handle());
 
 
 
@@ -839,6 +856,48 @@ pub fn run() {
             }
             _ => {}
         });
+}
+
+fn rebuild_tray_menu(app_handle: &tauri::AppHandle) -> Result<(), tauri::Error> {
+    let state: tauri::State<'_, AppState> = app_handle.state();
+    let settings = {
+        let lock = state.settings.lock().unwrap();
+        Arc::clone(&*lock)
+    };
+
+    let show_dashboard = MenuItemBuilder::with_id("dashboard", "Open Window").build(app_handle)?;
+    let quit_item = MenuItemBuilder::with_id("quit", "Exit").build(app_handle)?;
+
+    let mut menu_builder = MenuBuilder::new(app_handle)
+        .item(&show_dashboard);
+
+    if let Ok(sep) = tauri::menu::PredefinedMenuItem::separator(app_handle) {
+        menu_builder = menu_builder.item(&sep);
+    }
+
+    for agent in &settings.agents {
+        let hotkey = if agent.hotkey_value.trim().is_empty() {
+            "None".to_string()
+        } else {
+            agent.hotkey_value.clone()
+        };
+        let label = format!("{} ({})", agent.name, hotkey);
+        let agent_item = MenuItemBuilder::with_id(&agent.id, &label).build(app_handle)?;
+        menu_builder = menu_builder.item(&agent_item);
+    }
+
+    if let Ok(sep) = tauri::menu::PredefinedMenuItem::separator(app_handle) {
+        menu_builder = menu_builder.item(&sep);
+    }
+    menu_builder = menu_builder.item(&quit_item);
+
+    let menu = menu_builder.build()?;
+
+    if let Some(tray) = app_handle.tray_by_id("main-tray") {
+        let _ = tray.set_menu(Some(menu));
+    }
+
+    Ok(())
 }
 
 

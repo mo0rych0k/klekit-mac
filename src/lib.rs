@@ -110,8 +110,24 @@ impl VoiceAssistantEngine {
 
     /// Updates internal state and triggers the status callback if registered.
     fn update_state(&self, new_state: AppState) {
-        *self.state.lock().unwrap() = new_state;
+        let old_state = {
+            let mut state_guard = self.state.lock().unwrap();
+            let old = *state_guard;
+            *state_guard = new_state;
+            old
+        };
         *self.last_active.lock().unwrap() = Instant::now();
+
+        if new_state == AppState::Refining && old_state != AppState::Refining {
+            let enable_sounds = {
+                let lock = self.settings.lock().unwrap();
+                lock.enable_sounds
+            };
+            if enable_sounds {
+                os_integration::play_sound("processing");
+            }
+        }
+
         if let Some(cb) = &*self.on_status_change.lock().unwrap() {
             cb(new_state);
         }

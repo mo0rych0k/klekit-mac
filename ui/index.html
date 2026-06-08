@@ -1368,6 +1368,21 @@
                 </button>
             </nav>
 
+            <!-- Voice Dictation Status Panel -->
+            <div class="voice-status-panel" style="margin: 16px 12px; padding: 12px 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 10px; box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);">
+                <div style="font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                    <span>🎙️</span> <span data-i18n="voice_dictation_title">Voice Dictation</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span style="color: var(--text-secondary);"><span data-i18n="voice_status_label">Status</span>:</span>
+                    <span id="global-voice-status" style="font-weight: 600; color: var(--text-primary); transition: color 0.2s ease;">Idle</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
+                    <span style="color: var(--text-secondary);"><span data-i18n="voice_language_label">Language</span>:</span>
+                    <span id="global-voice-lang" style="font-weight: 600; color: var(--accent-purple);">Auto-Detect</span>
+                </div>
+            </div>
+
             <div class="sidebar-footer">
                 <div class="active-agents-sidebar">
                     <div class="active-agents-title" data-i18n="active_profiles">Active Profiles</div>
@@ -1925,6 +1940,10 @@
                         enableGemmaEl.checked = localSettings.enable_gemma;
                     }
                     renderCustomDropdown('global-stt', localSettings.voice_stt_language);
+                    const langValEl = document.getElementById('global-voice-lang');
+                    if (langValEl) {
+                        langValEl.innerHTML = getLanguageLabel(localSettings.voice_stt_language);
+                    }
 
                     renderAgentsList();
 
@@ -2848,6 +2867,33 @@
             window.__TAURI__.event.listen('agent-status-change', (event) => {
                 const { agent_id, status } = event.payload;
 
+                if (agent_id === 'global_voice') {
+                    let statusLabel = 'Idle';
+                    let statusColor = 'var(--text-primary)';
+                    if (status === 'listening') {
+                        statusLabel = '● Recording';
+                        statusColor = '#ff3b30';
+                    } else if (status === 'transcribing') {
+                        statusLabel = '● Transcribing';
+                        statusColor = 'var(--accent-purple)';
+                    } else if (status === 'success') {
+                        statusLabel = '✔ Success';
+                        statusColor = '#34c759';
+                    }
+                    const statusEl = document.getElementById('global-voice-status');
+                    if (statusEl) {
+                        statusEl.innerText = statusLabel;
+                        statusEl.style.color = statusColor;
+                    }
+                    return;
+                } else {
+                    const statusEl = document.getElementById('global-voice-status');
+                    if (statusEl) {
+                        statusEl.innerText = 'Idle';
+                        statusEl.style.color = 'var(--text-primary)';
+                    }
+                }
+
                 // Clear state classes from all sidebar cells
                 document.querySelectorAll('.agent-list-item').forEach(item => {
                     item.classList.remove('listening', 'transcribing', 'refining', 'success');
@@ -3102,6 +3148,17 @@
             }
         }
 
+        function getLanguageLabel(code) {
+            if (code === 'auto') {
+                return '🌐 ' + t('auto_detect');
+            }
+            const lang = WHISPER_LANGUAGES.find(l => l.code === code);
+            if (lang) {
+                return `${lang.flag} ${lang.name}`;
+            }
+            return code;
+        }
+
         function selectLanguageOption(type, value, displayHtml) {
             const isGlobal = type === 'global-stt';
             const triggerId = isGlobal ? 'selected-global-stt-val' : `selected-${type}-val`;
@@ -3119,6 +3176,10 @@
             if (isGlobal) {
                 localSettings.voice_stt_language = value;
                 autoSaveSettings();
+                const langValEl = document.getElementById('global-voice-lang');
+                if (langValEl) {
+                    langValEl.innerHTML = getLanguageLabel(value);
+                }
             } else {
                 const field = type === 'stt' ? 'stt_language' : 'target_language';
                 updateAgentField(field, value);

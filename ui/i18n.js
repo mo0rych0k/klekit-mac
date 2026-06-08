@@ -48,7 +48,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "Auto-saved",
     "save_failed": "Save failed",
     "label_ui_language": "Interface Language",
-    "search": "Search..."
+    "search": "Search...",
+    "voice_dictation_title": "Voice Dictation",
+    "voice_status_label": "Status",
+    "voice_language_label": "Language"
   },
   "es": {
     "nav_agents": "Config. de Agentes",
@@ -99,7 +102,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "Guardado aut.",
     "save_failed": "Error al guardar",
     "label_ui_language": "Idioma de la interfaz",
-    "search": "Buscar..."
+    "search": "Buscar...",
+    "voice_dictation_title": "Dictado de voz",
+    "voice_status_label": "Estado",
+    "voice_language_label": "Idioma"
   },
   "fr": {
     "nav_agents": "Config. des Agents",
@@ -150,7 +156,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "Enregistré aut.",
     "save_failed": "Échec de l'enregistrement",
     "label_ui_language": "Langue de l'interface",
-    "search": "Rechercher..."
+    "search": "Rechercher...",
+    "voice_dictation_title": "Dictée vocale",
+    "voice_status_label": "Statut",
+    "voice_language_label": "Langue"
   },
   "de": {
     "nav_agents": "Agenten-Konfig.",
@@ -201,7 +210,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "Autom. gespeichert",
     "save_failed": "Speichern fehlgeschlagen",
     "label_ui_language": "Oberflächensprache",
-    "search": "Suchen..."
+    "search": "Suchen...",
+    "voice_dictation_title": "Diktat",
+    "voice_status_label": "Status",
+    "voice_language_label": "Sprache"
   },
   "zh": {
     "nav_agents": "代理配置",
@@ -252,7 +264,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "已自动保存",
     "save_failed": "保存失败",
     "label_ui_language": "界面语言",
-    "search": "搜索..."
+    "search": "搜索...",
+    "voice_dictation_title": "语音听写",
+    "voice_status_label": "状态",
+    "voice_language_label": "语言"
   },
   "ja": {
     "nav_agents": "エージェント設定",
@@ -303,7 +318,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "自動保存済み",
     "save_failed": "保存に失敗しました",
     "label_ui_language": "インターフェース言語",
-    "search": "検索..."
+    "search": "検索...",
+    "voice_dictation_title": "音声入力",
+    "voice_status_label": "ステータス",
+    "voice_language_label": "言語"
   },
   "ko": {
     "nav_agents": "에이전트 설정",
@@ -354,7 +372,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "자동 저장됨",
     "save_failed": "저장 실패",
     "label_ui_language": "인터페이스 언어",
-    "search": "검색..."
+    "search": "검색...",
+    "voice_dictation_title": "음성 받아쓰기",
+    "voice_status_label": "상태",
+    "voice_language_label": "언어"
   },
   "ar": {
     "nav_agents": "إعداد الوكلاء",
@@ -405,7 +426,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "تم الحفظ تلقائيًا",
     "save_failed": "فشل الحفظ",
     "label_ui_language": "لغة الواجهة",
-    "search": "بحث..."
+    "search": "بحث...",
+    "voice_dictation_title": "الإملاء الصوتي",
+    "voice_status_label": "الحالة",
+    "voice_language_label": "اللغة"
   },
   "hi": {
     "nav_agents": "एजेंट कॉन्फ़िगरेशन",
@@ -456,7 +480,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "स्वचालित रूप से सहेजा गया",
     "save_failed": "सहेजना विफल रहा",
     "label_ui_language": "इंटरफ़ेस भाषा",
-    "search": "खोजें..."
+    "search": "खोजें...",
+    "voice_dictation_title": "आवाज़ डिक्टेशन",
+    "voice_status_label": "स्थिति",
+    "voice_language_label": "भाषा"
   },
   "pt": {
     "nav_agents": "Config. de Agentes",
@@ -507,7 +534,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "Salvo automaticamente",
     "save_failed": "Falha ao salvar",
     "label_ui_language": "Idioma da interface",
-    "search": "Buscar..."
+    "search": "Buscar...",
+    "voice_dictation_title": "Ditado de voz",
+    "voice_status_label": "Status",
+    "voice_language_label": "Idioma"
   },
   "it": {
     "nav_agents": "Config. Agenti",
@@ -558,7 +588,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "Autosalvato",
     "save_failed": "Salvataggio fallito",
     "label_ui_language": "Lingua dell'interfaccia",
-    "search": "Cerca..."
+    "search": "Cerca...",
+    "voice_dictation_title": "Dettatura vocale",
+    "voice_status_label": "Stato",
+    "voice_language_label": "Lingua"
   },
   "nl": {
     "nav_agents": "Agentenconfiguratie",
@@ -609,7 +642,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "Automatisch opgeslagen",
     "save_failed": "Opslaan mislukt",
     "label_ui_language": "Interfacetaal",
-    "search": "Zoeken..."
+    "search": "Zoeken...",
+    "voice_dictation_title": "Spraakdicteren",
+    "voice_status_label": "Status",
+    "voice_language_label": "Taal"
   },
   "pl": {
     "nav_agents": "Konfig. agentów",
@@ -660,7 +696,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "Zapisano automatycznie",
     "save_failed": "Błąd zapisu",
     "label_ui_language": "Język interfejsu",
-    "search": "Szukaj..."
+    "search": "Szukaj...",
+    "voice_dictation_title": "Dyktowanie głosowe",
+    "voice_status_label": "Status",
+    "voice_language_label": "Język"
   },
   "tr": {
     "nav_agents": "Ajan Yapılandırması",
@@ -711,7 +750,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "Otomatik kaydedildi",
     "save_failed": "Kaydetme başarısız",
     "label_ui_language": "Arayüz Dili",
-    "search": "Ara..."
+    "search": "Ara...",
+    "voice_dictation_title": "Sesle Yazma",
+    "voice_status_label": "Durum",
+    "voice_language_label": "Dil"
   },
   "vi": {
     "nav_agents": "Cấu hình Agent",
@@ -762,7 +804,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "Đã tự động lưu",
     "save_failed": "Lưu thất bại",
     "label_ui_language": "Ngôn ngữ giao diện",
-    "search": "Tìm kiếm..."
+    "search": "Tìm kiếm...",
+    "voice_dictation_title": "Nhập liệu giọng nói",
+    "voice_status_label": "Trạng thái",
+    "voice_language_label": "Ngôn ngữ"
   },
   "id": {
     "nav_agents": "Konfigurasi Agen",
@@ -813,7 +858,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "Tersimpan otomatis",
     "save_failed": "Gagal menyimpan",
     "label_ui_language": "Bahasa Antarmuka",
-    "search": "Cari..."
+    "search": "Cari...",
+    "voice_dictation_title": "Dikte Suara",
+    "voice_status_label": "Status",
+    "voice_language_label": "Bahasa"
   },
   "th": {
     "nav_agents": "ตั้งค่าเอเจนต์",
@@ -864,7 +912,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "บันทึกอัตโนมัติแล้ว",
     "save_failed": "บันทึกล้มเหลว",
     "label_ui_language": "ภาษาอินเตอร์เฟส",
-    "search": "ค้นหา..."
+    "search": "ค้นหา...",
+    "voice_dictation_title": "พิมพ์ด้วยเสียง",
+    "voice_status_label": "สถานะ",
+    "voice_language_label": "ภาษา"
   },
   "sv": {
     "nav_agents": "Agentkonfiguration",
@@ -915,7 +966,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "Autosparad",
     "save_failed": "Kunde inte spara",
     "label_ui_language": "Gränssnittsspråk",
-    "search": "Sök..."
+    "search": "Sök...",
+    "voice_dictation_title": "Röstinmatning",
+    "voice_status_label": "Status",
+    "voice_language_label": "Språk"
   },
   "no": {
     "nav_agents": "Agentkonfigurasjon",
@@ -966,7 +1020,10 @@ const UI_TRANSLATIONS = {
     "auto_saved": "Autolagret",
     "save_failed": "Lagring feilet",
     "label_ui_language": "Grensesnittspråk",
-    "search": "Søk..."
+    "search": "Søk...",
+    "voice_dictation_title": "Tale-til-tekst",
+    "voice_status_label": "Status",
+    "voice_language_label": "Språk"
   },
   "uk": {
     "nav_agents": "Конфіг агентів",
@@ -1017,6 +1074,9 @@ const UI_TRANSLATIONS = {
     "auto_saved": "Автозбережено",
     "save_failed": "Помилка збереження",
     "label_ui_language": "Мова інтерфейсу",
-    "search": "Пошук..."
+    "search": "Пошук...",
+    "voice_dictation_title": "Голосове введення",
+    "voice_status_label": "Статус",
+    "voice_language_label": "Мова"
   }
 };

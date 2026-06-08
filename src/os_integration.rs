@@ -106,6 +106,7 @@ pub fn play_sound(sound_type: &str) {
                 "start" => "/System/Library/Sounds/Tink.aiff",
                 "stop" => "/System/Library/Sounds/Pop.aiff",
                 "complete" => "/System/Library/Sounds/Glass.aiff",
+                "processing" => "/System/Library/Sounds/Ping.aiff",
                 _ => return,
             };
             let _ = std::process::Command::new("afplay")
@@ -119,6 +120,7 @@ pub fn play_sound(sound_type: &str) {
                 "start" => "[System.Media.SystemSounds]::Beep.Play()",
                 "stop" => "[System.Media.SystemSounds]::Hand.Play()",
                 "complete" => "[System.Media.SystemSounds]::Asterisk.Play()",
+                "processing" => "[System.Media.SystemSounds]::Question.Play()",
                 _ => return,
             };
             let _ = std::process::Command::new("powershell")
