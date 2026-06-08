@@ -601,13 +601,13 @@ fn build_llm_prompt(agent: &settings::AgentProfile) -> String {
             .unwrap_or_default()
     };
     
-    let target_lang = if agent.target_language.trim().is_empty() || agent.target_language == "No Translation" {
-        "the original language".to_string()
+    let language_instruction = if agent.target_language.trim().is_empty() || agent.target_language == "No Translation" {
+        "Maintain the original language (translate to clear English only if explicitly requested, otherwise fix the original language).".to_string()
     } else {
-        agent.target_language.trim().to_string()
+        format!("Translate the text to {} and refine it.", agent.target_language.trim())
     };
 
-    let base_prompt = config.default_prompt.replace("{{TARGET_LANGUAGE}}", &target_lang);
+    let base_prompt = config.default_prompt.replace("{{LANGUAGE_INSTRUCTION}}", &language_instruction);
     
     let mut prompt_parts = Vec::new();
     prompt_parts.push(base_prompt);

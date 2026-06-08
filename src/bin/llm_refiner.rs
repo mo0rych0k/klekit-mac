@@ -40,30 +40,45 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // 3. Construct the exact English prompt payload using a raw string literal to maintain formatting
-    let prompt = format!(
-        r#"You are a strict text editing assistant. Your only task is to correct grammatical, spelling, and punctuation errors in the provided Ukrainian text. 
-Follow these constraints strictly:
-1. DO NOT add any extra commentary, explanations, or introductory phrases.
-2. DO NOT change the style, tone, or sentence structure unless it contains a grammatical error.
-3. DO NOT insert random spaces, special characters, or symbols.
-4. Output ONLY the final corrected text.
-
-Input text: "{}"
-Corrected output:"#,
-        raw_transcript
-    );
-
-    // 4. Implement dynamic execution of the litert-lm binary using std::process::Command
-    let litert_lm_path = find_litert_lm()?;
-
-    // Parse model path from argv[1] (passed by the engine) with fallback to default assets path
+    // Parse command line arguments passed by the engine
     let args: Vec<String> = std::env::args().collect();
+
+    // Parse model path from argv[1] with fallback to default models path
     let model_path = if args.len() > 1 {
         &args[1]
     } else {
         "models/gemma-4-E2B-it.litertlm"
     };
+
+    // Parse system prompt from argv[2] with fallback to default strict Ukrainian grammar refiner
+    let system_prompt = if args.len() > 2 && !args[2].trim().is_empty() {
+        args[2].trim().to_string()
+    } else {
+        r#"You are a strict text editing assistant. Your only task is to correct grammatical, spelling, and punctuation errors in the provided Ukrainian text. 
+Follow these constraints strictly:
+1. DO NOT add any extra commentary, explanations, or introductory phrases.
+2. DO NOT change the style, tone, or sentence structure unless it contains a grammatical error.
+3. DO NOT insert random spaces, special characters, or symbols.
+4. Output ONLY the final corrected text."#.to_string()
+    };
+
+    // 3. Construct the prompt payload using the system prompt to maintain formatting
+    let prompt = format!(
+        r#"{}{}
+
+Input text: "{}"
+Corrected output:"#,
+        system_prompt,
+        if system_prompt.contains("Strictly output ONLY") || system_prompt.contains("Follow these constraints strictly:") {
+            ""
+        } else {
+            "\n\nFollow these constraints strictly:\n1. DO NOT add any extra commentary, explanations, or introductory phrases.\n2. Output ONLY the final corrected text."
+        },
+        raw_transcript
+    );
+
+    // 4. Implement dynamic execution of the litert-lm binary using std::process::Command
+    let litert_lm_path = find_litert_lm()?;
 
     // 5. Pass arguments safely via the OS execve array using separate .arg() calls
     let output = Command::new(litert_lm_path)
