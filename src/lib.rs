@@ -257,6 +257,86 @@ impl VoiceAssistantEngine {
         Ok(())
     }
 
+    pub fn run_text_refinement(&self, text: &str, agent_id: &str) -> Result<String> {
+        let settings_snapshot = {
+            let lock = self.settings.lock().unwrap();
+            Arc::clone(&*lock)
+        };
+
+        let agent = settings_snapshot.agents.iter()
+            .find(|a| a.id == agent_id)
+            .cloned()
+            .unwrap_or_else(|| {
+                settings_snapshot.agents.first().cloned().unwrap_or_else(|| {
+                    AppSettings::default().agents.remove(0)
+                })
+            });
+
+        let refiner_path = &self.refiner_bin_path;
+        if !refiner_path.exists() {
+            self.log("⏳ Compiling sidecar llm_refiner...");
+            let build_status = std::process::Command::new("cargo")
+                .args(["build", "--bin", "llm_refiner"])
+                .status()
+                .context("Failed to build llm_refiner")?;
+            if !build_status.success() {
+                anyhow::bail!("Failed to compile llm_refiner");
+            }
+            if let Some(parent) = refiner_path.parent() {
+                std::fs::create_dir_all(parent).context("Failed to create bin directory")?;
+            }
+            std::fs::copy("target/debug/llm_refiner", refiner_path)
+                .context("Failed to copy compiled llm_refiner to bin/llm_refiner")?;
+        }
+
+        let system_prompt = build_llm_prompt(&agent);
+        let model_name = self.gemma_model_path
+            .file_name()
+            .map(|f| f.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "Gemma 4".to_string());
+        self.log(format!("🔮 Prompt for LLM (Model: {}):\n{}", model_name, system_prompt));
+
+        self.update_state(AppState::Refining);
+        self.log(format!("🔮 Refining text with local Gemma 4 (target lang: {})...", agent.target_language));
+        self.log(format!("🔮 Launching llm_refiner sidecar using model: {}", model_name));
+        let mut child = std::process::Command::new(refiner_path)
+            .arg(&self.gemma_model_path)
+            .arg(&system_prompt)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .spawn()
+            .context("Failed to launch llm_refiner")?;
+
+        {
+            use std::io::Write;
+            let mut stdin = child
+                .stdin
+                .take()
+                .context("Failed to open subprocess stdin")?;
+            stdin
+                .write_all(text.as_bytes())
+                .context("Failed to write to stdin")?;
+        }
+
+        let output = child
+            .wait_with_output()
+            .context("Error waiting for Gemma 4 subprocess")?;
+        
+        self.update_state(AppState::Idle);
+        
+        if output.status.success() {
+            let refined_raw = String::from_utf8_lossy(&output.stdout);
+            Ok(strip_quotes(&refined_raw))
+        } else {
+            let stderr_err = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!(
+                "Gemma subprocess failed with exit code: {:?}. Error: {}",
+                output.status.code(),
+                stderr_err.trim()
+            )
+        }
+    }
+
     async fn run_processing_pipeline(self: &Arc<Self>, audio_data: Vec<f32>) {
         self.log(format!("VoiceAssistantEngine::run_processing_pipeline called (audio data length={})", audio_data.len()));
         let engine_blocking = Arc::clone(self);
@@ -359,57 +439,61 @@ impl VoiceAssistantEngine {
             }
             // ---------------------------------
 
-            let refiner_path = &engine_blocking.refiner_bin_path;
-            if !refiner_path.exists() {
-                engine_blocking.log("⏳ Compiling sidecar llm_refiner...");
-                let build_status = std::process::Command::new("cargo")
-                    .args(["build", "--bin", "llm_refiner"])
-                    .status()
-                    .context("Failed to build llm_refiner")?;
-                if !build_status.success() {
-                    anyhow::bail!("Failed to compile llm_refiner");
+            let refined = if s.enable_gemma {
+                let refiner_path = &engine_blocking.refiner_bin_path;
+                if !refiner_path.exists() {
+                    engine_blocking.log("⏳ Compiling sidecar llm_refiner...");
+                    let build_status = std::process::Command::new("cargo")
+                        .args(["build", "--bin", "llm_refiner"])
+                        .status()
+                        .context("Failed to build llm_refiner")?;
+                    if !build_status.success() {
+                        anyhow::bail!("Failed to compile llm_refiner");
+                    }
+                    if let Some(parent) = refiner_path.parent() {
+                        std::fs::create_dir_all(parent).context("Failed to create bin directory")?;
+                    }
+                    std::fs::copy("target/debug/llm_refiner", refiner_path)
+                        .context("Failed to copy compiled llm_refiner to bin/llm_refiner")?;
                 }
-                if let Some(parent) = refiner_path.parent() {
-                    std::fs::create_dir_all(parent).context("Failed to create bin directory")?;
+
+                let system_prompt = build_llm_prompt(&agent);
+                let model_name = engine_blocking.gemma_model_path
+                    .file_name()
+                    .map(|f| f.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| "Gemma 4".to_string());
+                engine_blocking.log(format!("🔮 Prompt for LLM (Model: {}):\n{}", model_name, system_prompt));
+
+                engine_blocking.update_state(AppState::Refining);
+                engine_blocking.log(format!("🔮 Refining with local Gemma 4 (target lang: {})...", agent.target_language));
+                engine_blocking.log(format!("🔮 Launching llm_refiner sidecar using model: {}", model_name));
+                let mut child = std::process::Command::new(refiner_path)
+                    .arg(&engine_blocking.gemma_model_path)
+                    .arg(&system_prompt)          // argv[2]: dynamic system prompt
+                    .stdin(std::process::Stdio::piped())
+                    .stdout(std::process::Stdio::piped())
+                    .spawn()
+                    .context("Failed to launch llm_refiner")?;
+
+                {
+                    use std::io::Write;
+                    let mut stdin = child
+                        .stdin
+                        .take()
+                        .context("Failed to open subprocess stdin")?;
+                    stdin
+                        .write_all(raw_transcript.as_bytes())
+                        .context("Failed to write to stdin")?;
                 }
-                std::fs::copy("target/debug/llm_refiner", refiner_path)
-                    .context("Failed to copy compiled llm_refiner to bin/llm_refiner")?;
-            }
 
-            let system_prompt = build_llm_prompt(&agent);
-            let model_name = engine_blocking.gemma_model_path
-                .file_name()
-                .map(|f| f.to_string_lossy().into_owned())
-                .unwrap_or_else(|| "Gemma 4".to_string());
-            engine_blocking.log(format!("🔮 Prompt for LLM (Model: {}):\n{}", model_name, system_prompt));
-
-            engine_blocking.update_state(AppState::Refining);
-            engine_blocking.log(format!("🔮 Refining with local Gemma 4 (target lang: {})...", agent.target_language));
-            engine_blocking.log(format!("🔮 Launching llm_refiner sidecar using model: {}", model_name));
-            let mut child = std::process::Command::new(refiner_path)
-                .arg(&engine_blocking.gemma_model_path)
-                .arg(&system_prompt)          // argv[2]: dynamic system prompt
-                .stdin(std::process::Stdio::piped())
-                .stdout(std::process::Stdio::piped())
-                .spawn()
-                .context("Failed to launch llm_refiner")?;
-
-            {
-                use std::io::Write;
-                let mut stdin = child
-                    .stdin
-                    .take()
-                    .context("Failed to open subprocess stdin")?;
-                stdin
-                    .write_all(raw_transcript.as_bytes())
-                    .context("Failed to write to stdin")?;
-            }
-
-            let output = child
-                .wait_with_output()
-                .context("Error waiting for Gemma 4 subprocess")?;
-            let refined = String::from_utf8_lossy(&output.stdout);
-            let refined = strip_quotes(&refined);
+                let output = child
+                    .wait_with_output()
+                    .context("Error waiting for Gemma 4 subprocess")?;
+                let refined_raw = String::from_utf8_lossy(&output.stdout);
+                strip_quotes(&refined_raw)
+            } else {
+                raw_transcript.clone()
+            };
 
             Ok(Some((raw_transcript, refined)))
         })

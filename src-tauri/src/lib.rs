@@ -176,6 +176,18 @@ mod commands {
             }
         }
 
+        // 4.5. Register global voice recording shortcut
+        if !new_settings.voice_hotkey_value.trim().is_empty() && new_settings.voice_hotkey_type == "Keyboard" {
+            if let Some(shortcut) = parse_shortcut(&new_settings.voice_hotkey_value) {
+                state.engine.log(format!("[global-shortcut] Registering global voice shortcut '{}'", new_settings.voice_hotkey_value));
+                if let Err(e) = app.global_shortcut().register(shortcut) {
+                    state.engine.log(format!("[global-shortcut] ❌ Failed to register global voice shortcut '{}': {:?}", new_settings.voice_hotkey_value, e));
+                    return Err(format!("Failed to register global voice shortcut: {:?}", e));
+                }
+                state.engine.log(format!("[global-shortcut] ✅ Registered global voice shortcut '{}'", new_settings.voice_hotkey_value));
+            }
+        }
+
         // Swap atomic pointer
         {
             let mut lock = state.settings.lock().unwrap();
@@ -277,6 +289,16 @@ mod commands {
             let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
         }
     }
+
+    #[tauri::command]
+    pub fn refine_text(
+        text: String,
+        agent_id: String,
+        state: tauri::State<'_, AppState>,
+    ) -> Result<String, String> {
+        state.engine.run_text_refinement(&text, &agent_id)
+            .map_err(|e| e.to_string())
+    }
 }
 
 
@@ -304,6 +326,43 @@ fn spawn_mouse_listener(
             Arc::clone(&*lock)
         };
 
+        let is_voice_mouse = if settings.voice_hotkey_type == "Mouse" {
+            let button_number = unsafe { event.buttonNumber() };
+            let target_number = match settings.voice_hotkey_value.as_str() {
+                "LeftClick" | "MouseButton1"  => Some(0),
+                "RightClick" | "MouseButton2" => Some(1),
+                "MiddleClick" | "MouseButton3"=> Some(2),
+                "MouseButton4"               => Some(3),
+                "MouseButton5"               => Some(4),
+                _ => None,
+            };
+            target_number.map_or(false, |tn| button_number == tn)
+        } else {
+            false
+        };
+
+        let is_press = event_type == NSEventType::LeftMouseDown || 
+                       event_type == NSEventType::RightMouseDown || 
+                       event_type == NSEventType::OtherMouseDown;
+
+        let e = Arc::clone(&engine);
+        let tx = recorder_tx.clone();
+
+        if is_voice_mouse {
+            if is_press {
+                e.log(format!("[global-mouse] Global voice recording Pressed '{}'", settings.voice_hotkey_value));
+                tauri::async_runtime::spawn(async move {
+                    let _ = VoiceAssistantEngine::start_recording_for_agent(e, tx, "global_voice".to_string());
+                });
+            } else {
+                e.log(format!("[global-mouse] Global voice recording Released '{}'", settings.voice_hotkey_value));
+                tauri::async_runtime::spawn(async move {
+                    let _ = VoiceAssistantEngine::stop_and_process_for_agent(e, tx, "global_voice".to_string());
+                });
+            }
+            return;
+        }
+
         let matched = settings.agents.iter().find(|agent| {
             if !agent.is_active || agent.hotkey_type != "Mouse" { return false; }
             let button_number = unsafe { event.buttonNumber() };
@@ -320,24 +379,9 @@ fn spawn_mouse_listener(
 
         if let Some(agent) = matched {
             let agent_id = agent.id.clone();
-            
-            let is_press = event_type == NSEventType::LeftMouseDown || 
-                           event_type == NSEventType::RightMouseDown || 
-                           event_type == NSEventType::OtherMouseDown;
-
-            let e = Arc::clone(&engine);
-            let tx = recorder_tx.clone();
-
             if is_press {
                 e.log(format!("[global-mouse] MATCH Pressed '{}' for agent '{}'", agent.hotkey_value, agent.name));
-                tauri::async_runtime::spawn(async move {
-                    let _ = VoiceAssistantEngine::start_recording_for_agent(e, tx, agent_id);
-                });
-            } else {
-                e.log(format!("[global-mouse] MATCH Released '{}' for agent '{}'", agent.hotkey_value, agent.name));
-                tauri::async_runtime::spawn(async move {
-                    let _ = VoiceAssistantEngine::stop_and_process_for_agent(e, tx, agent_id);
-                });
+                run_os_refinement(e, agent_id);
             }
         }
     };
@@ -390,6 +434,40 @@ fn spawn_mouse_listener(
         }
         std::mem::forget(local_monitor);
     }
+}
+
+fn run_os_refinement(engine: Arc<VoiceAssistantEngine>, agent_id: String) {
+    tauri::async_runtime::spawn(async move {
+        engine.log(format!("[global-refine] Starting OS-wide refinement for agent '{}'...", agent_id));
+        if let Err(e) = os_integration::simulate_copy() {
+            engine.log(format!("❌ Failed to simulate copy: {:?}", e));
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+        
+        let clipboard_text = match arboard::Clipboard::new() {
+            Ok(mut cb) => cb.get_text().unwrap_or_default(),
+            Err(_) => String::new(),
+        };
+        
+        if clipboard_text.trim().is_empty() {
+            engine.log("⚠️ Clipboard is empty, nothing to refine");
+            return;
+        }
+        
+        engine.log(format!("[global-refine] Selected text to refine: '{}'", clipboard_text));
+        match engine.run_text_refinement(&clipboard_text, &agent_id) {
+            Ok(refined) => {
+                engine.log(format!("[global-refine] Refined text: '{}'", refined));
+                if let Err(e) = os_integration::inject_text(&refined) {
+                    engine.log(format!("❌ Failed to inject refined text: {:?}", e));
+                }
+            }
+            Err(e) => {
+                engine.log(format!("❌ Refinement failed: {:?}", e));
+            }
+        }
+    });
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -465,6 +543,31 @@ pub fn run() {
                         Arc::clone(&*lock)
                     };
 
+                    let is_voice_shortcut = settings.voice_hotkey_type == "Keyboard" &&
+                        parse_shortcut(&settings.voice_hotkey_value).map_or(false, |s| s == *shortcut);
+
+                    if is_voice_shortcut {
+                        let e = Arc::clone(&engine_shortcut);
+                        let tx = rec_tx_shortcut.clone();
+                        engine_shortcut.log(format!(
+                            "[global-shortcut] Global voice recording shortcut matched with state {:?}",
+                            event.state
+                        ));
+                        match event.state {
+                            ShortcutState::Pressed => {
+                                tauri::async_runtime::spawn(async move {
+                                    let _ = VoiceAssistantEngine::start_recording_for_agent(e, tx, "global_voice".to_string());
+                                });
+                            }
+                            ShortcutState::Released => {
+                                tauri::async_runtime::spawn(async move {
+                                    let _ = VoiceAssistantEngine::stop_and_process_for_agent(e, tx, "global_voice".to_string());
+                                });
+                            }
+                        }
+                        return;
+                    }
+
                     let matched_agent = settings.agents.iter().find(|a| {
                         a.is_active &&
                         a.hotkey_type == "Keyboard" && 
@@ -473,26 +576,19 @@ pub fn run() {
 
                     if let Some(agent) = matched_agent {
                         let agent_id = agent.id.clone();
-                        let e  = Arc::clone(&engine_shortcut);
-                        let tx = rec_tx_shortcut.clone();
-                        e.log(format!(
+                        let e = Arc::clone(&engine_shortcut);
+                        engine_shortcut.log(format!(
                             "[global-shortcut] Match for agent '{}' ({}) with state {:?}",
                             agent.name, agent.id, event.state
                         ));
                         match event.state {
                             ShortcutState::Pressed => {
-                                tauri::async_runtime::spawn(async move {
-                                    let _ = VoiceAssistantEngine::start_recording_for_agent(e, tx, agent_id);
-                                });
+                                run_os_refinement(e, agent_id);
                             }
-                            ShortcutState::Released => {
-                                tauri::async_runtime::spawn(async move {
-                                    let _ = VoiceAssistantEngine::stop_and_process_for_agent(e, tx, agent_id);
-                                });
-                            }
+                            _ => {}
                         }
                     } else {
-                        engine_shortcut.log("[global-shortcut] No matching agent found for shortcut".to_string());
+                        engine_shortcut.log("[global-shortcut] No matching agent or voice shortcut found".to_string());
                     }
                 })
                 .build(),
@@ -505,7 +601,8 @@ pub fn run() {
             commands::delete_history_item,
             commands::clear_history,
             commands::get_preset_blueprints,
-            commands::open_url
+            commands::open_url,
+            commands::refine_text
         ])
         .setup(move |app| {
             // Configure logging for debugging
@@ -626,6 +723,22 @@ pub fn run() {
                                 "[global-shortcut] ⚠️ Failed to parse hotkey value '{}' for agent '{}'",
                                 agent.hotkey_value, agent.name
                             ));
+                        }
+                    }
+                }
+
+                // Register global voice hotkey on boot
+                if !boot_settings.voice_hotkey_value.trim().is_empty() && boot_settings.voice_hotkey_type == "Keyboard" {
+                    if let Some(shortcut) = parse_shortcut(&boot_settings.voice_hotkey_value) {
+                        match app.global_shortcut().register(shortcut) {
+                            Ok(_) => engine_toggle.log(format!(
+                                "[global-shortcut] ✅ Registered boot global voice hotkey '{}'",
+                                boot_settings.voice_hotkey_value
+                            )),
+                            Err(e) => engine_toggle.log(format!(
+                                "[global-shortcut] ❌ Failed to register boot global voice hotkey '{}': {:?}",
+                                boot_settings.voice_hotkey_value, e
+                            )),
                         }
                     }
                 }
