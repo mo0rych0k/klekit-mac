@@ -124,21 +124,19 @@ impl DbManager {
     pub fn get_all_agents(&self) -> Result<Vec<AgentProfile>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, name, stt_language, whisper_prompt, target_language, preset_id, custom_prompt, hotkey_type, hotkey_value, is_active 
+            "SELECT id, name, target_language, preset_id, custom_prompt, hotkey_type, hotkey_value, is_active 
              FROM agents"
         )?;
         let rows = stmt.query_map([], |row| {
-            let is_active_int: i32 = row.get(9)?;
+            let is_active_int: i32 = row.get(7)?;
             Ok(AgentProfile {
                 id: row.get(0)?,
                 name: row.get(1)?,
-                stt_language: row.get(2)?,
-                whisper_prompt: row.get(3)?,
-                target_language: row.get(4)?,
-                preset_id: row.get(5)?,
-                custom_prompt: row.get(6)?,
-                hotkey_type: row.get(7)?,
-                hotkey_value: row.get(8)?,
+                target_language: row.get(2)?,
+                preset_id: row.get(3)?,
+                custom_prompt: row.get(4)?,
+                hotkey_type: row.get(5)?,
+                hotkey_value: row.get(6)?,
                 is_active: is_active_int != 0,
             })
         })?;
@@ -158,12 +156,10 @@ impl DbManager {
             let is_active_int = if agent.is_active { 1 } else { 0 };
             tx.execute(
                 "INSERT INTO agents (id, name, stt_language, whisper_prompt, target_language, preset_id, custom_prompt, hotkey_type, hotkey_value, is_active)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                 VALUES (?1, ?2, 'auto', '', ?3, ?4, ?5, ?6, ?7, ?8)",
                 (
                     &agent.id,
                     &agent.name,
-                    &agent.stt_language,
-                    &agent.whisper_prompt,
                     &agent.target_language,
                     &agent.preset_id,
                     &agent.custom_prompt,
@@ -217,8 +213,6 @@ mod tests {
         let custom_agent = AgentProfile {
             id: "custom_agent".to_string(),
             name: "Custom".to_string(),
-            stt_language: "en".to_string(),
-            whisper_prompt: "".to_string(),
             target_language: "No Translation".to_string(),
             preset_id: "None".to_string(),
             custom_prompt: "Test".to_string(),

@@ -8,9 +8,6 @@ use anyhow::{Context, Result};
 pub struct AgentProfile {
     pub id: String,
     pub name: String,
-    pub stt_language: String,
-    #[serde(default)]
-    pub whisper_prompt: String,
     pub target_language: String,
     pub preset_id: String,
     pub custom_prompt: String,
@@ -27,10 +24,34 @@ pub struct AppSettings {
     pub enable_auto_paste: bool,
     #[serde(default = "default_true")]
     pub enable_sounds: bool,
+    #[serde(default = "default_voice_hotkey_type")]
+    pub voice_hotkey_type: String,
+    #[serde(default = "default_voice_hotkey_value")]
+    pub voice_hotkey_value: String,
+    #[serde(default = "default_voice_stt_language")]
+    pub voice_stt_language: String,
+    #[serde(default = "default_voice_whisper_prompt")]
+    pub voice_whisper_prompt: String,
 }
 
 fn default_true() -> bool {
     true
+}
+
+fn default_voice_hotkey_type() -> String {
+    "Keyboard".to_string()
+}
+
+fn default_voice_hotkey_value() -> String {
+    "".to_string()
+}
+
+fn default_voice_stt_language() -> String {
+    "auto".to_string()
+}
+
+fn default_voice_whisper_prompt() -> String {
+    "".to_string()
 }
 
 impl Default for AppSettings {
@@ -39,8 +60,6 @@ impl Default for AppSettings {
             agents: vec![AgentProfile {
                 id: "slack_refiner".to_string(),
                 name: "Slack Refiner".to_string(),
-                stt_language: "auto".to_string(),
-                whisper_prompt: "".to_string(),
                 target_language: "No Translation".to_string(),
                 preset_id: "workspace_sync".to_string(),
                 custom_prompt: "".to_string(),
@@ -50,6 +69,10 @@ impl Default for AppSettings {
             }],
             enable_auto_paste: true,
             enable_sounds: true,
+            voice_hotkey_type: default_voice_hotkey_type(),
+            voice_hotkey_value: default_voice_hotkey_value(),
+            voice_stt_language: default_voice_stt_language(),
+            voice_whisper_prompt: default_voice_whisper_prompt(),
         }
     }
 }

@@ -272,16 +272,7 @@ impl VoiceAssistantEngine {
             aid.clone().unwrap_or_default()
         };
 
-        let active_agent = settings_snapshot.agents.iter()
-            .find(|a| a.id == active_agent_id)
-            .cloned()
-            .unwrap_or_else(|| {
-                settings_snapshot.agents.first().cloned().unwrap_or_else(|| {
-                    AppSettings::default().agents.remove(0)
-                })
-            });
-
-        self.log(format!("🧠 Whisper speech recognition (STT lang: {})...", active_agent.stt_language));
+        self.log(format!("🧠 Whisper speech recognition (STT lang: {})...", settings_snapshot.voice_stt_language));
 
         let settings_clone = Arc::clone(&settings_snapshot);
         let active_agent_id_clone = active_agent_id.clone();
@@ -317,14 +308,14 @@ impl VoiceAssistantEngine {
                 .context("Failed to create Whisper state")?;
 
             let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 0 });
-            let lang = agent.stt_language.as_str();
+            let lang = s.voice_stt_language.as_str();
             params.set_language(if lang == "auto" { None } else { Some(lang) });
             params.set_print_special(false);
             params.set_print_progress(false);
             params.set_print_realtime(false);
 
             let prompt_for_speak = settings::load_prompt_for_speak();
-            let mut final_whisper_prompt = agent.whisper_prompt.trim().to_string();
+            let mut final_whisper_prompt = s.voice_whisper_prompt.trim().to_string();
             if !prompt_for_speak.trim().is_empty() {
                 if !final_whisper_prompt.is_empty() {
                     final_whisper_prompt.push_str(", ");
