@@ -1,6 +1,5 @@
 const UI_TRANSLATIONS = {
   "en": {
-    "nav_editor": "Editor Workspace",
     "nav_agents": "Agents Config",
     "nav_history": "History",
     "nav_settings": "Settings",
@@ -970,7 +969,6 @@ const UI_TRANSLATIONS = {
     "search": "Søk..."
   },
   "uk": {
-    "nav_editor": "Редактор",
     "nav_agents": "Конфіг агентів",
     "nav_history": "Історія",
     "nav_settings": "Налаштування",

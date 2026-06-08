@@ -1338,115 +1338,6 @@
             text-align: center;
             user-select: none;
         }
-
-        /* ─── Editor Workspace View ─── */
-        .editor-container {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            height: calc(100% - 46px);
-            overflow: hidden;
-        }
-
-        .editor-textarea-wrapper {
-            position: relative;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .editor-textarea {
-            flex-grow: 1;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 16px 20px;
-            color: var(--text-primary);
-            font-family: 'Inter', sans-serif;
-            font-size: 14px;
-            line-height: 1.6;
-            resize: none;
-            outline: none;
-            transition: all 0.2s ease;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        .editor-textarea:focus {
-            border-color: var(--accent-purple);
-            box-shadow: 0 0 0 1px var(--accent-purple-border), inset 0 2px 4px rgba(0, 0, 0, 0.2);
-            background: #141627;
-        }
-
-        .editor-toolbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            flex-shrink: 0;
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 12px 16px;
-        }
-
-        .editor-controls-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-grow: 1;
-        }
-
-        .editor-controls-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .editor-agent-selector-label {
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-        }
-
-        .editor-stats-bar {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            font-size: 12px;
-            color: var(--text-secondary);
-            flex-shrink: 0;
-            padding: 0 4px;
-        }
-
-        .editor-stat-pill {
-            background-color: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 3px 8px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .editor-stat-pill.active {
-            border-color: var(--accent-purple-border);
-            color: var(--text-primary);
-            background-color: var(--accent-purple-glow);
-        }
-
-        .editor-deleted-buffer-preview {
-            max-width: 300px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            font-style: italic;
-            font-size: 11px;
-            opacity: 0.8;
-        }
     </style>
     <script src="i18n.js"></script>
 </head>
@@ -1466,10 +1357,7 @@
             </div>
 
             <nav class="nav-menu">
-                <button class="nav-item active" onclick="switchTab('editor', this)">
-                    <span>📝</span> <span data-i18n="nav_editor">Editor Workspace</span>
-                </button>
-                <button class="nav-item" onclick="switchTab('agents', this)">
+                <button class="nav-item active" onclick="switchTab('agents', this)">
                     <span>👥</span> <span data-i18n="nav_agents">Agents Config</span>
                 </button>
                 <button class="nav-item" onclick="switchTab('history', this)">
@@ -1493,45 +1381,6 @@
         <!-- Main Panel Content -->
         <div class="main-content">
 
-            <!-- Editor Tab -->
-            <div id="tab-editor" class="tab-pane active">
-                <div class="pane-header">
-                    <h3 data-i18n="editor_title">Editor Workspace</h3>
-                    <span id="editor-status-indicator" style="font-size: 12px; font-weight: 600; color: var(--accent-purple); opacity: 0; transition: opacity 0.3s ease;">🔮 Processing...</span>
-                </div>
-
-                <div class="editor-container">
-                    <div class="editor-textarea-wrapper">
-                        <textarea id="editor-textarea" class="editor-textarea" placeholder="Type here, dictate text globally, or test refinement options. Press an agent's global hotkey (e.g. F9) to refine selections or deleted words."></textarea>
-                    </div>
-
-                    <div class="editor-stats-bar">
-                        <div class="editor-stat-pill" id="editor-stat-selection">
-                            <span>Selected:</span> <span id="editor-selected-count">0</span> chars
-                        </div>
-                        <div class="editor-stat-pill" id="editor-stat-deleted">
-                            <span>Last Deleted:</span> <span id="editor-deleted-count">0</span> chars
-                            <span class="editor-deleted-buffer-preview" id="editor-deleted-preview">None</span>
-                        </div>
-                    </div>
-
-                    <div class="editor-toolbar">
-                        <div class="editor-controls-left">
-                            <span class="editor-agent-selector-label" data-i18n="editor_agent_label">Refinement Agent:</span>
-                            <select id="editor-agent-select" style="max-width: 220px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 12px; color: var(--text-primary); cursor: pointer;" onchange="populateEditorAgents()">
-                                <!-- Loaded dynamically with list of active agents -->
-                            </select>
-                        </div>
-
-                        <div class="editor-controls-right">
-                            <button class="btn btn-secondary" onclick="clearEditor()" title="Clear workspace">🗑️ Clear</button>
-                            <button class="btn btn-secondary" id="editor-refine-deleted-btn" onclick="refineEditorDeletions()" title="Refine deleted text buffer with Gemma">🔮 Refine Deleted</button>
-                            <button class="btn btn-primary" id="editor-refine-selected-btn" onclick="refineEditorSelection()" title="Refine selected text with Gemma">🔮 Refine Selection</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- History Tab -->
             <div id="tab-history" class="tab-pane">
                 <div class="pane-header">
@@ -1552,7 +1401,7 @@
             </div>
 
             <!-- Agents Config Tab -->
-            <div id="tab-agents" class="tab-pane">
+            <div id="tab-agents" class="tab-pane active">
                 <div class="pane-header">
                     <h3 data-i18n="agents_config_title">Agents Configuration</h3>
                     <button class="btn btn-primary" id="add-agent-btn" onclick="addNewAgent()"
@@ -2031,10 +1880,9 @@
                 element.classList.add('active');
             } else {
                 const navs = document.querySelectorAll('.nav-item');
-                if (tabId === 'editor') navs[0].classList.add('active');
-                else if (tabId === 'agents') navs[1].classList.add('active');
-                else if (tabId === 'history') navs[2].classList.add('active');
-                else if (tabId === 'settings') navs[3].classList.add('active');
+                if (tabId === 'agents') navs[0].classList.add('active');
+                else if (tabId === 'history') navs[1].classList.add('active');
+                else if (tabId === 'settings') navs[2].classList.add('active');
             }
 
             document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
@@ -2079,7 +1927,6 @@
                     renderCustomDropdown('global-stt', localSettings.voice_stt_language);
 
                     renderAgentsList();
-                    populateEditorAgents();
 
                     if (localSettings.agents && localSettings.agents.length > 0) {
                         if (!activeAgentId) {
@@ -2190,7 +2037,6 @@
                 list.appendChild(item);
             });
             renderActiveAgentsGrid();
-            populateEditorAgents();
         }
 
         function displayHotkey(value) {
@@ -3279,255 +3125,6 @@
             }
         }
 
-        // ─── Editor Workspace State & Tracking ───
-        let lastDeletedText = '';
-
-        function syncEditorPrevState() {
-            const textarea = document.getElementById('editor-textarea');
-            if (!textarea) return;
-            textarea._prevValue = textarea.value;
-            textarea._prevSelStart = textarea.selectionStart;
-            textarea._prevSelEnd = textarea.selectionEnd;
-
-            // Update selected count display
-            const selectedCount = textarea.selectionEnd - textarea.selectionStart;
-            document.getElementById('editor-selected-count').textContent = selectedCount;
-            const selectionPill = document.getElementById('editor-stat-selection');
-            if (selectedCount > 0) {
-                selectionPill.classList.add('active');
-            } else {
-                selectionPill.classList.remove('active');
-            }
-        }
-
-        function setupEditorTracking() {
-            const textarea = document.getElementById('editor-textarea');
-            if (!textarea) return;
-
-            // Initialize prev values
-            textarea._prevValue = textarea.value;
-            textarea._prevSelStart = textarea.selectionStart;
-            textarea._prevSelEnd = textarea.selectionEnd;
-
-            textarea.addEventListener('keydown', (e) => {
-                syncEditorPrevState();
-
-                // Intercept Agent Hotkeys when focused inside editor
-                const hotkeyStr = getEventHotkeyString(e);
-                const matchedAgent = localSettings.agents.find(a => 
-                    a.is_active && displayHotkey(a.hotkey_value) === displayHotkey(hotkeyStr)
-                );
-
-                if (matchedAgent) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    runEditorRefinement(matchedAgent.id);
-                }
-            });
-
-            textarea.addEventListener('input', (e) => {
-                const prev = textarea._prevValue || '';
-                const curr = textarea.value;
-                const prevStart = textarea._prevSelStart || 0;
-                const prevEnd = textarea._prevSelEnd || 0;
-
-                if (prev.length > curr.length) {
-                    // Deletion occurred
-                    let deleted = '';
-                    if (prevStart !== prevEnd) {
-                        deleted = prev.substring(prevStart, prevEnd);
-                    } else {
-                        const diffLen = prev.length - curr.length;
-                        const currentCursor = textarea.selectionStart;
-                        deleted = prev.substring(currentCursor, currentCursor + diffLen);
-                    }
-
-                    if (deleted.trim().length > 0) {
-                        lastDeletedText = deleted;
-                        document.getElementById('editor-deleted-count').textContent = lastDeletedText.length;
-                        const previewEl = document.getElementById('editor-deleted-preview');
-                        previewEl.textContent = `"${lastDeletedText}"`;
-                        document.getElementById('editor-stat-deleted').classList.add('active');
-                    }
-                }
-
-                textarea._prevValue = curr;
-                textarea._prevSelStart = textarea.selectionStart;
-                textarea._prevSelEnd = textarea.selectionEnd;
-            });
-
-            // Monitor selection updates
-            textarea.addEventListener('select', syncEditorPrevState);
-        }
-
-        function getEventHotkeyString(e) {
-            const parts = [];
-            if (e.metaKey) parts.push('Command');
-            if (e.ctrlKey) parts.push('Control');
-            if (e.altKey) parts.push('Alt');
-            if (e.shiftKey) parts.push('Shift');
-
-            let key = e.key;
-            const code = e.code;
-            const isModifier = ['Control', 'Shift', 'Alt', 'Meta'].includes(key);
-
-            if (!isModifier) {
-                if (key === ' ') {
-                    key = 'Space';
-                } else if (key.length === 1) {
-                    key = key.toUpperCase();
-                } else if (code.startsWith('F') && code.length <= 3) {
-                    key = code;
-                } else if (key === 'CapsLock') {
-                    key = 'CapsLock';
-                } else if (key === 'Enter') {
-                    key = 'Enter';
-                }
-                parts.push(key);
-            }
-            return parts.join('+');
-        }
-
-        async function runEditorRefinement(agentId) {
-            const textarea = document.getElementById('editor-textarea');
-            if (!textarea) return;
-
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            let textToRefine = '';
-            let isSelection = false;
-
-            if (start !== end) {
-                textToRefine = textarea.value.substring(start, end);
-                isSelection = true;
-            } else {
-                textToRefine = lastDeletedText;
-            }
-
-            if (!textToRefine || textToRefine.trim().length === 0) {
-                showSaveFeedback('Nothing to refine (select some text or delete something first)', true);
-                return;
-            }
-
-            const statusEl = document.getElementById('editor-status-indicator');
-            if (statusEl) {
-                statusEl.style.opacity = '1';
-                statusEl.textContent = '🔮 Processing refinement...';
-            }
-
-            try {
-                const refined = await invokeCommand('refine_text', { text: textToRefine, agentId: agentId });
-                if (statusEl) {
-                    statusEl.textContent = '✅ Done!';
-                    setTimeout(() => {
-                        if (statusEl.textContent === '✅ Done!') statusEl.style.opacity = '0';
-                    }, 2000);
-                }
-
-                if (refined) {
-                    if (isSelection) {
-                        const val = textarea.value;
-                        textarea.value = val.substring(0, start) + refined + val.substring(end);
-                        textarea.selectionStart = start;
-                        textarea.selectionEnd = start + refined.length;
-                    } else {
-                        const cursor = textarea.selectionStart;
-                        const val = textarea.value;
-                        textarea.value = val.substring(0, cursor) + refined + val.substring(cursor);
-                        textarea.selectionStart = cursor + refined.length;
-                        textarea.selectionEnd = cursor + refined.length;
-                    }
-                    syncEditorPrevState();
-                }
-            } catch (err) {
-                console.error('Refinement failed:', err);
-                if (statusEl) {
-                    statusEl.textContent = '❌ Failed';
-                    setTimeout(() => {
-                        if (statusEl.textContent === '❌ Failed') statusEl.style.opacity = '0';
-                    }, 3000);
-                }
-                alert('Refinement failed: ' + err);
-            }
-        }
-
-        function refineEditorSelection() {
-            const selectEl = document.getElementById('editor-agent-select');
-            if (!selectEl || !selectEl.value) {
-                alert('Please configure and activate an agent profile first.');
-                return;
-            }
-
-            const textarea = document.getElementById('editor-textarea');
-            if (!textarea || textarea.selectionStart === textarea.selectionEnd) {
-                alert('Please select some text in the editor workspace first.');
-                return;
-            }
-            runEditorRefinement(selectEl.value);
-        }
-
-        function refineEditorDeletions() {
-            const selectEl = document.getElementById('editor-agent-select');
-            if (!selectEl || !selectEl.value) {
-                alert('Please configure and activate an agent profile first.');
-                return;
-            }
-
-            if (!lastDeletedText || lastDeletedText.trim().length === 0) {
-                alert('No deleted text tracked yet. Backspace some words first.');
-                return;
-            }
-            runEditorRefinement(selectEl.value);
-        }
-
-        function clearEditor() {
-            const textarea = document.getElementById('editor-textarea');
-            if (textarea) {
-                textarea.value = '';
-                syncEditorPrevState();
-            }
-            lastDeletedText = '';
-            document.getElementById('editor-deleted-count').textContent = '0';
-            const previewEl = document.getElementById('editor-deleted-preview');
-            previewEl.textContent = 'None';
-            document.getElementById('editor-stat-deleted').classList.remove('active');
-        }
-
-        function populateEditorAgents() {
-            const select = document.getElementById('editor-agent-select');
-            if (!select) return;
-
-            const prevValue = select.value;
-            select.innerHTML = '';
-
-            const activeAgents = localSettings.agents.filter(a => a.is_active);
-            if (activeAgents.length === 0) {
-                const opt = document.createElement('option');
-                opt.value = '';
-                opt.textContent = 'No Active Agents';
-                select.appendChild(opt);
-                document.getElementById('editor-refine-selected-btn').disabled = true;
-                document.getElementById('editor-refine-deleted-btn').disabled = true;
-                return;
-            }
-
-            document.getElementById('editor-refine-selected-btn').disabled = false;
-            document.getElementById('editor-refine-deleted-btn').disabled = false;
-
-            activeAgents.forEach(agent => {
-                const opt = document.createElement('option');
-                opt.value = agent.id;
-                opt.textContent = `${agent.name} (${displayHotkey(agent.hotkey_value)})`;
-                select.appendChild(opt);
-            });
-
-            if (activeAgents.some(a => a.id === prevValue)) {
-                select.value = prevValue;
-            } else {
-                select.value = activeAgents[0].id;
-            }
-        }
-
         // Global click listener to close dropdowns when clicking outside
         document.addEventListener('click', function (e) {
             document.querySelectorAll('.custom-dropdown').forEach(dropdownEl => {
@@ -3541,7 +3138,6 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await updateUiLanguage();
             await loadSettings();
-            setupEditorTracking();
             // Pre-fetch history page silently in background
             loadHistory(false);
         });
