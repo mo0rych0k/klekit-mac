@@ -33,8 +33,6 @@ hound = "3.5"
 # For convenient error handling
 anyhow = "1.0"
 
-# Local LLM Gemma 2
-llama-cpp-2 = { version = "0.1", features = ["metal"] }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }

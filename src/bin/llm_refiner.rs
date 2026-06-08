@@ -1,46 +1,38 @@
-#[allow(deprecated)]
 use std::io::{self, Read};
-use std::path::Path;
-use anyhow::{Context, Result, bail};
-use llama_cpp_2::{
-    llama_backend::LlamaBackend,
-    context::params::LlamaContextParams,
-    model::{params::LlamaModelParams, AddBos, LlamaModel},
-    sampling::LlamaSampler,
-    llama_batch::LlamaBatch,
-};
+use std::process::Command;
+use std::path::PathBuf;
+use anyhow::{Context, Result, anyhow, bail};
 
-fn main() -> Result<()> {
-    // 1. Get model path from argv[1] (required)
-    let args: Vec<String> = std::env::args().collect();
-    let model_path_str = if args.len() > 1 {
-        &args[1]
-    } else {
-        "./models/gemma-2-2b-it-Q6_K.gguf"
-    };
-    let model_path = Path::new(model_path_str);
-
-    // 2. Get dynamic system prompt from argv[2] (optional — falls back to sensible default)
-    let system_prompt = if args.len() > 2 {
-        args[2].clone()
-    } else {
-        "You are a high-performance offline text refinement utility.\n\
-         Your job is to:\n\
-         1. Fix spelling, grammar, and punctuation mistakes in the transcript.\n\
-         2. Maintain the original language (translate to clear English only if explicitly requested).\n\
-         3. If technical terms or code fragments are present, apply proper formatting.\n\
-         4. Strictly output ONLY the corrected/translated text. Do NOT add any introductions, \
-            explanations, thoughts, notes, or markdown wrappers."
-            .to_string()
-    };
-
-    if !model_path.exists() {
-        bail!("Model file not found at: {}", model_path.display());
+/// Finds the `litert-lm` binary path by checking the system's `PATH` env variable,
+/// with a fallback to the macOS Python user-space path if `HOME` is set.
+fn find_litert_lm() -> Result<PathBuf> {
+    if let Some(path_var) = std::env::var_os("PATH") {
+        for dir in std::env::split_paths(&path_var) {
+            let candidate = dir.join("litert-lm");
+            if candidate.is_file() {
+                return Ok(candidate);
+            }
+        }
     }
 
-    // 3. Read raw transcript from stdin
+    if let Ok(home) = std::env::var("HOME") {
+        let fallback = PathBuf::from(home)
+            .join("Library/Python/3.14/bin/litert-lm");
+        if fallback.is_file() {
+            return Ok(fallback);
+        }
+    }
+
+    Err(anyhow!(
+        "litert-lm binary not found in PATH or at ~/Library/Python/3.14/bin/litert-lm"
+    ))
+}
+
+fn main() -> Result<()> {
+    // 2. Read the raw transcription string from stdin. Do not manually escape quotes or backslashes.
     let mut raw_transcript = String::new();
-    io::stdin().read_to_string(&mut raw_transcript)
+    io::stdin()
+        .read_to_string(&mut raw_transcript)
         .context("Failed to read raw transcript from stdin")?;
     let raw_transcript = raw_transcript.trim();
 
@@ -48,85 +40,51 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // Sanitize transcript to prevent prompt/turn injection in Gemma 2
-    let raw_transcript = raw_transcript
-        .replace("<start_of_turn>", "")
-        .replace("<end_of_turn>", "");
-
-    // 3. Initialize backend and load model with GPU (Metal) offloading
-    let backend = LlamaBackend::init().context("Failed to initialize LlamaBackend")?;
-    let model_params = LlamaModelParams::default()
-        .with_n_gpu_layers(99); // Offload all layers to GPU
-    let model = LlamaModel::load_from_file(&backend, model_path, &model_params)
-        .context("Failed to load Gemma 2 model file")?;
-
-    // 4. Create a lightweight inference context (2048 tokens limit)
-    let ctx_params = LlamaContextParams::default()
-        .with_n_ctx(std::num::NonZeroU32::new(2048));
-    let mut ctx = model.new_context(&backend, ctx_params)
-        .context("Failed to create inference context")?;
-
-    // 5. Format prompt: system prompt from argv[2] + Gemma 2 turn template + forced prefill
+    // 3. Construct the exact English prompt payload using a raw string literal to maintain formatting
     let prompt = format!(
-        "<start_of_turn>user\n\
-         {}\n\n\
-         Here is the raw transcript to refine:\n\
-         \"{}\"\n\
-         <end_of_turn>\n\
-         <start_of_turn>model\n",
-        system_prompt,
+        r#"You are a strict text editing assistant. Your only task is to correct grammatical, spelling, and punctuation errors in the provided Ukrainian text. 
+Follow these constraints strictly:
+1. DO NOT add any extra commentary, explanations, or introductory phrases.
+2. DO NOT change the style, tone, or sentence structure unless it contains a grammatical error.
+3. DO NOT insert random spaces, special characters, or symbols.
+4. Output ONLY the final corrected text.
+
+Input text: "{}"
+Corrected output:"#,
         raw_transcript
     );
 
-    // 6. Tokenize prompt
-    let tokens = model.str_to_token(&prompt, AddBos::Always)
-        .context("Failed to tokenize prompt")?;
+    // 4. Implement dynamic execution of the litert-lm binary using std::process::Command
+    let litert_lm_path = find_litert_lm()?;
 
-    if tokens.is_empty() {
-        bail!("Tokenized prompt is empty");
+    // Parse model path from argv[1] (passed by the engine) with fallback to default assets path
+    let args: Vec<String> = std::env::args().collect();
+    let model_path = if args.len() > 1 {
+        &args[1]
+    } else {
+        "models/gemma-4-E2B-it.litertlm"
+    };
+
+    // 5. Pass arguments safely via the OS execve array using separate .arg() calls
+    let output = Command::new(litert_lm_path)
+        .arg("run")
+        .arg(model_path)
+        .arg(format!("--prompt={}", prompt))
+        .output()
+        .context("Failed to execute litert-lm command")?;
+
+    // 6. If output.status.success() is true, print the exact trimmed stdout to the sidecar's stdout.
+    // If it fails, capture stderr and return a structured error.
+    if output.status.success() {
+        let refined_text = String::from_utf8_lossy(&output.stdout);
+        print!("{}", refined_text.trim());
+        Ok(())
+    } else {
+        let stderr_err = String::from_utf8_lossy(&output.stderr);
+        bail!(
+            "litert-lm execution failed with exit code: {:?}. Error: {}",
+            output.status.code(),
+            stderr_err.trim()
+        );
     }
-
-    // 7. Decode prompt
-    let mut batch = LlamaBatch::new(tokens.len(), 1);
-    for (i, &token) in tokens.iter().enumerate() {
-        let is_last = i == tokens.len() - 1;
-        batch.add(token, i as i32, &[0], is_last)?;
-    }
-    ctx.decode(&mut batch).context("Failed to decode prompt batch")?;
-
-    // 8. Autoregressive token generation loop
-    let mut generated_tokens = Vec::new();
-    let mut current_pos = tokens.len() as i32;
-
-    // Use a strict greedy sampler to avoid chat filler
-    let mut sampler = LlamaSampler::chain_simple([
-        LlamaSampler::greedy()
-    ]);
-
-    for _ in 0..512 {
-        let next_token = sampler.sample(&ctx, batch.n_tokens() - 1);
-
-        if next_token == model.token_eos() {
-            break;
-        }
-
-        generated_tokens.push(next_token);
-
-        batch.clear();
-        batch.add(next_token, current_pos, &[0], true)?;
-        ctx.decode(&mut batch).context("Failed to decode generated token")?;
-        current_pos += 1;
-    }
-
-    // 9. Convert generated token IDs back to UTF-8 text piece-by-piece
-    let mut refined_text = String::new();
-    #[allow(deprecated)]
-    for token in generated_tokens {
-        if let Ok(piece) = model.token_to_str(token, llama_cpp_2::model::Special::Plaintext) {
-            refined_text.push_str(&piece);
-        }
-    }
-
-    print!("{}", refined_text.trim());
-    Ok(())
 }

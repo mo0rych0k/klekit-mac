@@ -378,17 +378,23 @@ impl VoiceAssistantEngine {
                 if !build_status.success() {
                     anyhow::bail!("Failed to compile llm_refiner");
                 }
+                if let Some(parent) = refiner_path.parent() {
+                    std::fs::create_dir_all(parent).context("Failed to create bin directory")?;
+                }
+                std::fs::copy("target/debug/llm_refiner", refiner_path)
+                    .context("Failed to copy compiled llm_refiner to bin/llm_refiner")?;
             }
 
             let system_prompt = build_llm_prompt(&agent);
             let model_name = engine_blocking.gemma_model_path
                 .file_name()
                 .map(|f| f.to_string_lossy().into_owned())
-                .unwrap_or_else(|| "Gemma 2".to_string());
+                .unwrap_or_else(|| "Gemma 4".to_string());
             engine_blocking.log(format!("🔮 Prompt for LLM (Model: {}):\n{}", model_name, system_prompt));
 
             engine_blocking.update_state(AppState::Refining);
-            engine_blocking.log(format!("🔮 Refining with local Gemma 2 (target lang: {})...", agent.target_language));
+            engine_blocking.log(format!("🔮 Refining with local Gemma 4 (target lang: {})...", agent.target_language));
+            engine_blocking.log(format!("🔮 Launching llm_refiner sidecar using model: {}", model_name));
             let mut child = std::process::Command::new(refiner_path)
                 .arg(&engine_blocking.gemma_model_path)
                 .arg(&system_prompt)          // argv[2]: dynamic system prompt
@@ -410,7 +416,7 @@ impl VoiceAssistantEngine {
 
             let output = child
                 .wait_with_output()
-                .context("Error waiting for Gemma 2 subprocess")?;
+                .context("Error waiting for Gemma 4 subprocess")?;
             let refined = String::from_utf8_lossy(&output.stdout);
             let refined = strip_quotes(&refined);
 
@@ -582,7 +588,7 @@ fn is_valid_speech_transcript(text: &str) -> bool {
     true
 }
 
-/// Assembles the full Gemma 2 turn-template prompt from the active agent profile.
+/// Assembles the full Gemma 4 turn-template prompt from the active agent profile.
 fn build_llm_prompt(agent: &settings::AgentProfile) -> String {
     let config = settings::load_gemma_prompts();
     

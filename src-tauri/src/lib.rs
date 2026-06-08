@@ -401,8 +401,8 @@ pub fn run() {
 
     // 1. Initialize our engine — pass shared_settings so the pipeline reads configuration
     let engine = Arc::new(VoiceAssistantEngine::new(
-        "./models/ggml-small.bin",
-        "./models/gemma-2-2b-it-Q6_K.gguf",
+        "./models/ggml-large-v3-turbo-q5_0.bin",
+        "./models/gemma-4-E2B-it.litertlm",
         "./bin/llm_refiner",
         Arc::clone(&shared_settings),
     ));

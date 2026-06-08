@@ -21,8 +21,8 @@ async fn main() -> Result<()> {
     // Initialize our voice assistant engine with model paths
     let cli_settings = Arc::new(Mutex::new(Arc::new(AppSettings::load())));
     let engine = Arc::new(VoiceAssistantEngine::new(
-        "./models/ggml-small.bin",
-        "./models/gemma-2-2b-it-Q6_K.gguf",
+        "./models/ggml-large-v3-turbo-q5_0.bin",
+        "./models/gemma-4-E2B-it.litertlm",
         "./bin/llm_refiner",
         cli_settings,
     ));

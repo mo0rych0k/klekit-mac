@@ -10,11 +10,11 @@ KleKit lets you dictate text into any input field on your machine — no interne
 
 ## ✨ Features
 
-- 🔒 **100% Offline** — all processing happens on-device via Apple Silicon (Metal) on macOS, or Vulkan/CUDA/DirectX on other platforms.
-- ⚡ **Fast** — ~1 second model spin-up on M-series chips and modern hardware.
-- 🧠 **Smart refinement** — Gemma 2 2B fixes grammar, formats technical terms, and cleans up speech artifacts.
-- 🎯 **Works anywhere** — pastes text into any active input field (IDE, browser, Slack, Notes…).
-- 💤 **Zero idle RAM** — models unload after 10 seconds of inactivity (20–30 MB at rest).
+- 🔒 **100% Offline** — all processing happens on-device, ensuring complete privacy.
+- ⚡ **Fast & Accelerated** — dynamic compilation and execution tailored to Apple Silicon (Metal/XNNPACK) on macOS.
+- 🧠 **Smart Refinement** — Google AI Edge **Gemma 4 E2B** model fixes grammar, formats technical terms, and cleans up speech artifacts.
+- 🎯 **Works Anywhere** — pastes text into any active input field (IDE, browser, Slack, Notes…).
+- 💤 **Zero Idle RAM** — models automatically unload after inactivity to keep a tiny memory footprint.
 - 🌍 **Multi-language** — transcribes in your language, optionally translates to English.
 
 ---
@@ -22,33 +22,36 @@ KleKit lets you dictate text into any input field on your machine — no interne
 ## 🏗️ Architecture
 
 ```
-Hotkey (hold) ──> cpal Recorder ──> whisper-rs STT (GGML) ──> Gemma 2 LLM (GGUF) ──> OS Paste Inject
+Hotkey (hold) ──> cpal Recorder ──> whisper-rs STT (GGML) ──> Gemma 4 LLM (LiteRT-LM) ──> OS Paste Inject
 ```
 
 | Module | Technology / Implementation | Role |
 |---|---|---|
 | Audio capture | `cpal` (see [src/audio.rs](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/src/audio.rs)) | 16 kHz mono PCM from mic |
 | Speech-to-text | `whisper-rs` (whisper.cpp) | Offline transcription |
-| Text refinement | [llm_refiner.rs](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/src/bin/llm_refiner.rs) (`llama-cpp-2` / Gemma 2 2B) | Grammar fix, formatting |
+| Text refinement | [llm_refiner.rs](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/src/bin/llm_refiner.rs) (`litert-lm` CLI / Gemma 4 E2B) | Grammar fix, formatting |
 | OS integration | [src/os_integration.rs](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/src/os_integration.rs) (`arboard` + CoreGraphics / API) | Hotkey & clipboard paste |
 | App shell | `Tauri 2` (see [src-tauri/Cargo.toml](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/src-tauri/Cargo.toml)) | Menu-bar tray app |
 
 The core coordinator for this workflow is the [VoiceAssistantEngine](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/src/lib.rs#L28) struct.
 
+### 🍏 New macOS Inference Engine
+Unlike the old GGUF-based inference, KleKit now utilizes Google's official **AI Edge LiteRT-LM** engine. 
+- The Rust sidecar dynamically locates the `litert-lm` command-line tool within your system `PATH`, with a fallback for macOS Python environments (`~/Library/Python/3.14/bin/litert-lm`).
+- It executes the official Gemma 4 E2B model in `.litertlm` format.
+- Computations are heavily accelerated via **XNNPACK** and macOS CPU vector instructions, producing highly accurate, real-time grammar corrections.
+
 ---
 
 ## 📋 Requirements
 
-- **macOS** 11.0+ (Apple Silicon recommended) or **Windows/Linux** (such as **Redmі** laptops like RedmiBook)
+- **macOS** 11.0+ (Apple Silicon M1/M2/M3/M4 recommended)
 - [Rust](https://rustup.rs/) 1.77+
 - [Tauri CLI](https://tauri.app/start/prerequisites/) v2
+- **Google AI Edge `litert-lm` CLI tool** (must be installed globally or at `~/Library/Python/3.14/bin/litert-lm` on macOS).
 - Model files (stored locally, **not** included in this repo):
-  - `models/ggml-large-v3-turbo.bin` — Whisper large-v3-turbo model ([download](https://huggingface.co/ggerganov/whisper.cpp))
-  - `models/gemma-2-2b-it-Q6_K.gguf` — Gemma 2 2B ([download](https://huggingface.co/bartowski/gemma-2-2b-it-GGUF))
-
-> [!NOTE]
-> **Any compatible model can be used on your system.** You are not restricted to the models listed above. You can configure any Whisper model (GGML format) for speech-to-text, or any LLM (GGUF format) supported by `llama.cpp` for text refinement.
-> The default models listed here are selected as the **minimum optimal ones** for everyday use. They offer the best balance of low RAM/VRAM footprint (vital for Zero-Memory Idle), quick model loading times, low latency, and highly accurate output.
+  - `models/ggml-large-v3-turbo-q5_0.bin` — Whisper large-v3-turbo Q5_0 model ([download](https://huggingface.co/ggerganov/whisper.cpp))
+  - `models/gemma-4-E2B-it.litertlm` — Gemma 4 E2B official Google AI Edge model
 
 ---
 
@@ -64,21 +67,18 @@ cd klekit-mac
 ```bash
 mkdir -p models
 
-# Whisper large-v3-turbo (~1.5 GB)
-curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin \
-  -o models/ggml-large-v3-turbo.bin
+# Whisper large-v3-turbo-q5_0 (~550 MB)
+curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin \
+  -o models/ggml-large-v3-turbo-q5_0.bin
 
-# Gemma 2 2B Q6_K (~2 GB)
-curl -L https://bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q6_K.gguf \
-  -o models/gemma-2-2b-it-Q6_K.gguf
+# Place the official gemma-4-E2B-it.litertlm model in your models directory
+# (Download gemma-4-E2B-it.litertlm from Kaggle or Hugging Face Google AI Edge repository)
 ```
 
 ### 3. Build and run
 ```bash
 cargo tauri dev
 ```
-
-On a **Redmі Book** running Windows or Linux, ensure you compile with the appropriate acceleration backend for `llama-cpp-2` inside [Cargo.toml](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/Cargo.toml).
 
 ### 4. Grant permissions
 On first launch, the OS will prompt for:
@@ -89,7 +89,7 @@ On first launch, the OS will prompt for:
 
 ## ⚙️ Configuration
 
-Settings are stored at the user's config directory (e.g., `~/Library/Application Support/klekit/settings.json` on macOS or `APPDATA/klekit/config.json` on Windows/Redmі). The configurations are managed by [AppSettings](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/src/settings.rs#L24) and [AgentProfile](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/src/settings.rs#L8):
+Settings are stored at the user's config directory (e.g., `~/Library/Application Support/klekit/settings.json` on macOS). The configurations are managed by [AppSettings](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/src/settings.rs#L24) and [AgentProfile](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/src/settings.rs#L8):
 
 ```json
 {
@@ -98,14 +98,14 @@ Settings are stored at the user's config directory (e.g., `~/Library/Application
   "vocabulary_hint": "",
   "llm_enabled": true,
   "llm_translate_to_english": false,
-  "whisper_model_path": "models/ggml-large-v3-turbo.bin",
-  "llm_model_path": "models/gemma-2-2b-it-Q6_K.gguf"
+  "whisper_model_path": "models/ggml-large-v3-turbo-q5_0.bin",
+  "llm_model_path": "models/gemma-4-E2B-it.litertlm"
 }
 ```
 
 The system prompt presets and vocabulary defaults are loaded from the [resources/](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/resources) folder:
-- **Voice Recognition Hints**: [prompt_for_speak.txt](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/resources/prompt_for_speak.txt) (loaded via [load_prompt_for_speak](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/src/settings.rs#L85)) is a plain text file containing comma-separated technical keywords and terms (e.g. JSON, HTML, Rust, Tauri). It is passed as the initial prompt to the Whisper STT model to prime its spelling and formatting, preventing transcription delay or spelling errors on technical jargon.
-- **LLM Refiner Presets**: [gemma_prompts.json](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/resources/gemma_prompts.json) (loaded via [load_gemma_prompts](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/src/settings.rs#L80)) is a JSON file containing the base prompt configurations (`default_prompt`) and specific templates (`presets` like "Fix Errors Only", "Spoken to Written", "Workspace Sync") used by the Gemma 2 refiner (or any other configured LLM) to post-process the transcribed text.
+- **Voice Recognition Hints**: [prompt_for_speak.txt](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/resources/prompt_for_speak.txt) (loaded via [load_prompt_for_speak](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/src/settings.rs#L85)) is a plain text file containing comma-separated technical keywords and terms (e.g. JSON, HTML, Rust, Tauri). It is passed as the initial prompt to the Whisper STT model to prime its spelling and formatting.
+- **LLM Refiner Presets**: [gemma_prompts.json](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/resources/gemma_prompts.json) (loaded via [load_gemma_prompts](file:///Users/sergeypylypyshko/Documents/Projects/rust/offline_voice_assistant/src/settings.rs#L80)) is a JSON file containing the base prompt configurations (`default_prompt`) and templates used by the Gemma 4 refiner.
 
 ---
 
@@ -113,13 +113,13 @@ The system prompt presets and vocabulary defaults are loaded from the [resources
 
 KleKit utilizes a "Zero-Memory Idle" state:
 
-| State | RAM usage |
+| State | Memory usage |
 |---|---|
 | Idle (models unloaded) | ~20–30 MB |
 | Transcribing (Whisper loaded) | ~500 MB |
-| Refining (Gemma loaded) | ~2–3 GB (Metal/VRAM/DirectX) |
+| Refining (Gemma 4 running via LiteRT) | ~2–3 GB (during inference only) |
 
-Models are **automatically unloaded** after **10 seconds** of inactivity to preserve system memory.
+Models are **automatically unloaded** after **60 seconds** of inactivity to preserve system memory.
 
 ---
 
