@@ -1,8 +1,8 @@
 # KleKit 🎙️
 
-> **Offline, privacy-first voice-to-text assistant for macOS (Apple Silicon) & Cross-Platform Systems**
+> **Offline, privacy-first voice dictation and text refinement assistant exclusively for macOS (Apple Silicon)**
 
-KleKit lets you dictate text into any input field on your machine — no internet, no cloud, no data leaving your device. Press a hotkey, speak, and your refined text is pasted instantly wherever your cursor is.
+KleKit lets you dictate text using your voice or refine selected text on your machine — no internet, no cloud, no data leaving your device. Press a hotkey, speak/select, and the processed text is pasted instantly wherever your cursor is.
 
 ![KleKit Screenshot](resources/screenshot.png)
 
@@ -10,19 +10,28 @@ KleKit lets you dictate text into any input field on your machine — no interne
 
 ## ✨ Features
 
-- 🔒 **100% Offline** — all processing happens on-device, ensuring complete privacy.
-- ⚡ **Fast & Accelerated** — dynamic compilation and execution tailored to Apple Silicon (Metal/XNNPACK) on macOS.
-- 🧠 **Smart Refinement** — Google AI Edge **Gemma 4 E2B** model fixes grammar, formats technical terms, and cleans up speech artifacts.
-- 🎯 **Works Anywhere** — pastes text into any active input field (IDE, browser, Slack, Notes…).
-- 💤 **Zero Idle RAM** — models automatically unload after inactivity to keep a tiny memory footprint.
-- 🌍 **Multi-language** — transcribes in your language, optionally translates to English.
+- 🎙️ **Voice Dictation** — Record voice input with a global hotkey, transcribe offline via Whisper STT, and paste the transcription directly at your cursor.
+- ✍️ **Text Refinement & Agents** — Highlight any text in any app, trigger a custom Agent hotkey, and have Gemma automatically refine, edit, format, or translate it in place.
+- 🔒 **100% Offline** — All processing happens locally on-device, ensuring complete privacy.
+- ⚡ **macOS Native & Accelerated** — Dynamic compilation and execution tailored to Apple Silicon (Metal/XNNPACK) on macOS.
+- 🧠 **Smart Gemma 4 Refiner** — Google AI Edge **Gemma 4 E2B** model fixes grammar, formats technical terms, and cleans up speech artifacts.
+- 🎯 **Works Anywhere** — Emulates keystrokes to paste text into any active input field (IDE, browser, Slack, Notes…).
+- 💤 **Zero Idle RAM** — Models automatically unload after 60 seconds of inactivity to keep a tiny memory footprint (~20-30 MB).
 
 ---
 
 ## 🏗️ Architecture
 
+KleKit operates via two distinct pipelines:
+
+1. **Voice Dictation (Whisper STT):**
 ```
-Hotkey (hold) ──> cpal Recorder ──> whisper-rs STT (GGML) ──> Gemma 4 LLM (LiteRT-LM) ──> OS Paste Inject
+Voice Hotkey (hold) ──> cpal Audio Recorder ──> whisper-rs STT (GGML) ──> (Optional Gemma 4 LLM) ──> OS Paste Inject
+```
+
+2. **Selected Text Refinement (Gemma LLM Agents):**
+```
+Agent Hotkey ──> OS Copy (Cmd+C) ──> Gemma 4 LLM (LiteRT-LM) ──> OS Paste Inject (Cmd+V)
 ```
 
 | Module | Technology / Implementation | Role |
