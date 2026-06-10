@@ -1369,17 +1369,19 @@
             </nav>
 
             <!-- Voice Dictation Status Panel -->
-            <div class="voice-status-panel" style="margin: 16px 12px; padding: 12px 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 10px; box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);">
-                <div style="font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                    <span>🎙️</span> <span data-i18n="voice_dictation_title">Voice Dictation</span>
-                </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
-                    <span style="color: var(--text-secondary);"><span data-i18n="voice_status_label">Status</span>:</span>
-                    <span id="global-voice-status" style="font-weight: 600; color: var(--text-primary); transition: color 0.2s ease;">Idle</span>
+            <div class="voice-status-panel" style="margin: 8px 2px;">
+                <div
+                    style="font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                    <span data-i18n="voice_dictation_title">Voice Dictation</span>
                 </div>
                 <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
-                    <span style="color: var(--text-secondary);"><span data-i18n="voice_language_label">Language</span>:</span>
-                    <span id="global-voice-lang" style="font-weight: 600; color: var(--accent-purple);">Auto-Detect</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="global-voice-status-dot" class="agent-status-dot idle" title="Idle"></span>
+                        <span id="global-voice-lang"
+                            style="font-weight: 600; color: var(--text-primary);">Auto-Detect</span>
+                    </div>
+                    <span id="global-voice-hotkey-menu"
+                        style="font-weight: 600; color: var(--text-secondary); font-family: monospace; font-size: 11px;">None</span>
                 </div>
             </div>
 
@@ -1442,16 +1444,24 @@
                         style="margin-left: 15px; font-size: 13px; color: var(--accent-green); font-weight: 500;"></span>
                 </div>
 
-                <div class="settings-form" style="overflow-y: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 16px; padding-right: 4px;">
+                <div class="settings-form"
+                    style="overflow-y: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 16px; padding-right: 4px;">
                     <!-- Card 1: Global Voice Recorder Settings -->
-                    <div style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
-                        <h4 style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--accent-purple); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 4px;">🎤 Global Voice Recorder</h4>
-                        
+                    <div
+                        style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+                        <h4
+                            style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--accent-purple); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 4px;">
+                            🎤 Global Voice Recorder</h4>
+
                         <div class="form-group">
                             <label>Voice Recording Hotkey</label>
                             <div class="hotkey-single-input-container">
-                                <input type="text" id="global-voice-hotkey-input" readonly placeholder="Click here to bind a key or mouse button (e.g. Mouse 4, F13)..." onclick="startGlobalVoiceHotkeyRecording()" style="text-align: center; font-weight: 700; cursor: pointer; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; color: var(--text-primary); font-size: 14px;">
-                                <div class="hotkey-hint" id="global-voice-hotkey-hint">⚠️ <span id="global-voice-hotkey-hint-text"></span></div>
+                                <input type="text" id="global-voice-hotkey-input" readonly
+                                    placeholder="Click here to bind a key or mouse button (e.g. Mouse 4, F13)..."
+                                    onclick="startGlobalVoiceHotkeyRecording()"
+                                    style="text-align: center; font-weight: 700; cursor: pointer; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; color: var(--text-primary); font-size: 14px;">
+                                <div class="hotkey-hint" id="global-voice-hotkey-hint">⚠️ <span
+                                        id="global-voice-hotkey-hint-text"></span></div>
                             </div>
                         </div>
 
@@ -1464,7 +1474,9 @@
                                 </div>
                                 <div class="dropdown-menu">
                                     <div class="dropdown-search-container">
-                                        <input type="text" class="dropdown-search-input" placeholder="Search..." oninput="filterGlobalSttDropdown(this.value)" onclick="event.stopPropagation()">
+                                        <input type="text" class="dropdown-search-input" placeholder="Search..."
+                                            oninput="filterGlobalSttDropdown(this.value)"
+                                            onclick="event.stopPropagation()">
                                     </div>
                                     <div class="dropdown-options-list" id="global-stt-options-list">
                                         <!-- Populated dynamically -->
@@ -1475,15 +1487,21 @@
 
                         <div class="form-group">
                             <label>Prompt Speak (STT Bias / Hints)</label>
-                            <input type="text" id="global-voice-whisper-prompt" placeholder="e.g. json, html, kubernetes, sergey (helps recognize specific words)" oninput="updateGlobalVoiceWhisperPrompt(this.value)">
+                            <input type="text" id="global-voice-whisper-prompt"
+                                placeholder="e.g. json, html, kubernetes, sergey (helps recognize specific words)"
+                                oninput="updateGlobalVoiceWhisperPrompt(this.value)">
                         </div>
                     </div>
 
                     <!-- Card 2: General Preferences -->
-                    <div style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
-                        <h4 style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--accent-purple); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 4px;">⚙️ Preferences</h4>
-                        
-                        <div class="setting-row" style="justify-content: space-between; align-items: center; border: none; padding: 6px 0; background: transparent; border-bottom: 1px solid rgba(255,255,255,0.03); border-radius: 0;">
+                    <div
+                        style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+                        <h4
+                            style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--accent-purple); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 4px;">
+                            ⚙️ Preferences</h4>
+
+                        <div class="setting-row"
+                            style="justify-content: space-between; align-items: center; border: none; padding: 6px 0; background: transparent; border-bottom: 1px solid rgba(255,255,255,0.03); border-radius: 0;">
                             <label for="global-ui-language" data-i18n="label_ui_language">Interface Language</label>
                             <select id="global-ui-language" onchange="changeUiLanguage(this.value)"
                                 style="background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 10px; color: var(--text-primary); font-size: 13px; outline: none; width: 180px; cursor: pointer; margin-right: 0;">
@@ -1510,27 +1528,42 @@
                             </select>
                         </div>
 
-                        <div class="setting-row" style="justify-content: space-between; align-items: center; border: none; padding: 6px 0; background: transparent; border-bottom: 1px solid rgba(255,255,255,0.03); border-radius: 0;">
-                            <label for="global-auto-paste" data-i18n="label_auto_paste">Automatically paste text at active cursor (simulates Cmd+V / Ctrl+V)</label>
-                            <label style="position: relative; display: inline-block; width: 44px; height: 24px; margin: 0; flex-shrink: 0;">
-                                <input type="checkbox" id="global-auto-paste" onchange="updateGlobalAutoPaste()" style="opacity: 0; width: 0; height: 0; position: absolute;">
-                                <span class="slider-toggle" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b526d; transition: .3s; border-radius: 24px;"></span>
+                        <div class="setting-row"
+                            style="justify-content: space-between; align-items: center; border: none; padding: 6px 0; background: transparent; border-bottom: 1px solid rgba(255,255,255,0.03); border-radius: 0;">
+                            <label for="global-auto-paste" data-i18n="label_auto_paste">Automatically paste text at
+                                active cursor (simulates Cmd+V / Ctrl+V)</label>
+                            <label
+                                style="position: relative; display: inline-block; width: 44px; height: 24px; margin: 0; flex-shrink: 0;">
+                                <input type="checkbox" id="global-auto-paste" onchange="updateGlobalAutoPaste()"
+                                    style="opacity: 0; width: 0; height: 0; position: absolute;">
+                                <span class="slider-toggle"
+                                    style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b526d; transition: .3s; border-radius: 24px;"></span>
                             </label>
                         </div>
 
-                        <div class="setting-row" style="justify-content: space-between; align-items: center; border: none; padding: 6px 0; background: transparent; border-bottom: 1px solid rgba(255,255,255,0.03); border-radius: 0;">
-                            <label for="global-enable-sounds" data-i18n="label_enable_sounds">Play short sound effects on recording start/stop and text completion</label>
-                            <label style="position: relative; display: inline-block; width: 44px; height: 24px; margin: 0; flex-shrink: 0;">
-                                <input type="checkbox" id="global-enable-sounds" onchange="updateGlobalEnableSounds()" style="opacity: 0; width: 0; height: 0; position: absolute;">
-                                <span class="slider-toggle" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b526d; transition: .3s; border-radius: 24px;"></span>
+                        <div class="setting-row"
+                            style="justify-content: space-between; align-items: center; border: none; padding: 6px 0; background: transparent; border-bottom: 1px solid rgba(255,255,255,0.03); border-radius: 0;">
+                            <label for="global-enable-sounds" data-i18n="label_enable_sounds">Play short sound effects
+                                on recording start/stop and text completion</label>
+                            <label
+                                style="position: relative; display: inline-block; width: 44px; height: 24px; margin: 0; flex-shrink: 0;">
+                                <input type="checkbox" id="global-enable-sounds" onchange="updateGlobalEnableSounds()"
+                                    style="opacity: 0; width: 0; height: 0; position: absolute;">
+                                <span class="slider-toggle"
+                                    style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b526d; transition: .3s; border-radius: 24px;"></span>
                             </label>
                         </div>
 
-                        <div class="setting-row" style="justify-content: space-between; align-items: center; border: none; padding: 6px 0; background: transparent; border-radius: 0;">
-                            <label for="global-enable-gemma">Enable Gemma LLM Refinement on dictated voice (auto-correct grammar offline)</label>
-                            <label style="position: relative; display: inline-block; width: 44px; height: 24px; margin: 0; flex-shrink: 0;">
-                                <input type="checkbox" id="global-enable-gemma" onchange="updateGlobalEnableGemma()" style="opacity: 0; width: 0; height: 0; position: absolute;">
-                                <span class="slider-toggle" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b526d; transition: .3s; border-radius: 24px;"></span>
+                        <div class="setting-row"
+                            style="justify-content: space-between; align-items: center; border: none; padding: 6px 0; background: transparent; border-radius: 0;">
+                            <label for="global-enable-gemma">Enable Gemma LLM Refinement on dictated voice (auto-correct
+                                grammar offline)</label>
+                            <label
+                                style="position: relative; display: inline-block; width: 44px; height: 24px; margin: 0; flex-shrink: 0;">
+                                <input type="checkbox" id="global-enable-gemma" onchange="updateGlobalEnableGemma()"
+                                    style="opacity: 0; width: 0; height: 0; position: absolute;">
+                                <span class="slider-toggle"
+                                    style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b526d; transition: .3s; border-radius: 24px;"></span>
                             </label>
                         </div>
                     </div>
@@ -1943,6 +1976,10 @@
                     const langValEl = document.getElementById('global-voice-lang');
                     if (langValEl) {
                         langValEl.innerHTML = getLanguageLabel(localSettings.voice_stt_language);
+                    }
+                    const voiceHotkeyMenuValEl = document.getElementById('global-voice-hotkey-menu');
+                    if (voiceHotkeyMenuValEl) {
+                        voiceHotkeyMenuValEl.textContent = displayHotkey(localSettings.voice_hotkey_value);
                     }
 
                     renderAgentsList();
@@ -2390,8 +2427,8 @@
             const code = e.code;
             const isModifier = ['Control', 'Shift', 'Alt', 'Meta'].includes(key);
 
-            const input = isRecordingHotkey 
-                ? document.getElementById('agent-hotkey-input') 
+            const input = isRecordingHotkey
+                ? document.getElementById('agent-hotkey-input')
                 : document.getElementById('global-voice-hotkey-input');
 
             if (!isModifier) {
@@ -2582,6 +2619,10 @@
                 localSettings.voice_hotkey_value = finalValue;
                 if (input) {
                     input.value = displayHotkey(finalValue);
+                }
+                const voiceHotkeyMenuValEl = document.getElementById('global-voice-hotkey-menu');
+                if (voiceHotkeyMenuValEl) {
+                    voiceHotkeyMenuValEl.textContent = displayHotkey(finalValue);
                 }
                 autoSaveSettings();
             } else {
@@ -2868,29 +2909,17 @@
                 const { agent_id, status } = event.payload;
 
                 if (agent_id === 'global_voice') {
-                    let statusLabel = 'Idle';
-                    let statusColor = 'var(--text-primary)';
-                    if (status === 'listening') {
-                        statusLabel = '● Recording';
-                        statusColor = '#ff3b30';
-                    } else if (status === 'transcribing') {
-                        statusLabel = '● Transcribing';
-                        statusColor = 'var(--accent-purple)';
-                    } else if (status === 'success') {
-                        statusLabel = '✔ Success';
-                        statusColor = '#34c759';
-                    }
-                    const statusEl = document.getElementById('global-voice-status');
-                    if (statusEl) {
-                        statusEl.innerText = statusLabel;
-                        statusEl.style.color = statusColor;
+                    const statusDotEl = document.getElementById('global-voice-status-dot');
+                    if (statusDotEl) {
+                        statusDotEl.className = `agent-status-dot ${status || 'idle'}`;
+                        statusDotEl.title = status ? (status.charAt(0).toUpperCase() + status.slice(1)) : 'Idle';
                     }
                     return;
                 } else {
-                    const statusEl = document.getElementById('global-voice-status');
-                    if (statusEl) {
-                        statusEl.innerText = 'Idle';
-                        statusEl.style.color = 'var(--text-primary)';
+                    const statusDotEl = document.getElementById('global-voice-status-dot');
+                    if (statusDotEl) {
+                        statusDotEl.className = 'agent-status-dot idle';
+                        statusDotEl.title = 'Idle';
                     }
                 }
 
@@ -2957,7 +2986,7 @@
             if (type === 'stt' || isGlobal) {
                 const isSelected = currentValue === 'auto';
                 const label = t('auto_detect');
-                const onClickStr = isGlobal 
+                const onClickStr = isGlobal
                     ? `selectLanguageOption('global-stt', 'auto', '🌐 ' + escapeJsString(t('auto_detect')))`
                     : `selectLanguageOption('stt', 'auto', '🌐 ' + escapeJsString(t('auto_detect')))`;
                 html += `
@@ -3031,7 +3060,7 @@
             const targetType = type === 'stt' ? 'target' : 'stt';
             const otherEl = document.getElementById(`dropdown-agent-${targetType}`);
             if (otherEl) otherEl.classList.remove('open', 'open-upward');
-            
+
             const globalSttEl = document.getElementById('dropdown-global-stt');
             if (globalSttEl) globalSttEl.classList.remove('open', 'open-upward');
 
@@ -3179,6 +3208,11 @@
                 const langValEl = document.getElementById('global-voice-lang');
                 if (langValEl) {
                     langValEl.innerHTML = getLanguageLabel(value);
+                }
+
+                const voiceHotkeyMenuValEl = document.getElementById('global-voice-hotkey-menu');
+                if (voiceHotkeyMenuValEl) {
+                    voiceHotkeyMenuValEl.textContent = displayHotkey(localSettings.voice_hotkey_value);
                 }
             } else {
                 const field = type === 'stt' ? 'stt_language' : 'target_language';
