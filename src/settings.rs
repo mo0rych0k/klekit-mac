@@ -45,6 +45,10 @@ pub struct AppSettings {
     pub whisper_model_path: String,
     #[serde(default)]
     pub gemma_model_path: String,
+    #[serde(default)]
+    pub qwen_model_path: String,
+    #[serde(default = "default_active_llm_model")]
+    pub active_llm_model: String,
 }
 
 fn default_true() -> bool {
@@ -72,6 +76,8 @@ fn default_voice_whisper_prompt() -> String {
 }
 
 fn default_voice_max_recording_minutes() -> u8 { 2 }
+
+fn default_active_llm_model() -> String { "gemma".to_string() }
 
 pub fn default_agents() -> Vec<AgentProfile> {
     vec![AgentProfile {
@@ -102,6 +108,8 @@ impl Default for AppSettings {
             voice_max_recording_minutes: default_voice_max_recording_minutes(),
             whisper_model_path: String::new(),
             gemma_model_path: String::new(),
+            qwen_model_path: String::new(),
+            active_llm_model: default_active_llm_model(),
         }
     }
 }
@@ -202,6 +210,8 @@ mod tests {
         assert_eq!(settings.voice_max_recording_minutes, 2);
         assert!(settings.whisper_model_path.is_empty());
         assert!(settings.gemma_model_path.is_empty());
+        assert!(settings.qwen_model_path.is_empty());
+        assert_eq!(settings.active_llm_model, "gemma");
     }
 
     #[test]

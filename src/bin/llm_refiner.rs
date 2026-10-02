@@ -62,7 +62,7 @@ Follow these constraints strictly:
 4. Output ONLY the final corrected text."#.to_string()
     };
 
-    let prompt = gemma_chat_prompt(&system_prompt, raw_transcript);
+    let prompt = chat_prompt(model_path, &system_prompt, raw_transcript);
 
     // 4. Implement dynamic execution of the litert-lm binary using std::process::Command
     let litert_lm_path = find_litert_lm()?;
@@ -71,6 +71,7 @@ Follow these constraints strictly:
     let output = Command::new(litert_lm_path)
         .arg("run")
         .arg(model_path)
+        .arg("--no-template")
         .arg(format!("--prompt={}", prompt))
         .output()
         .context("Failed to execute litert-lm command")?;
@@ -91,7 +92,12 @@ Follow these constraints strictly:
     }
 }
 
-fn gemma_chat_prompt(system_prompt: &str, user_text: &str) -> String {
+fn chat_prompt(model_path: &str, system_prompt: &str, user_text: &str) -> String {
+    if model_path.to_ascii_lowercase().contains("qwen") {
+        return format!(
+            "<|im_start|>system\n{system_prompt}\n<|im_end|>\n<|im_start|>user\nInput text:\n---\n{user_text}\n---\n<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+        );
+    }
     format!(
         "<|turn>system\n{system_prompt}\n<|turn|>\n<|turn>user\nInput text:\n---\n{user_text}\n---\n<|turn|>\n<|turn>model\n"
     )
@@ -99,13 +105,21 @@ fn gemma_chat_prompt(system_prompt: &str, user_text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::gemma_chat_prompt;
+    use super::chat_prompt;
 
     #[test]
     fn formats_gemma_four_chat_turns() {
-        let prompt = gemma_chat_prompt("Return only edited text.", "hello");
+        let prompt = chat_prompt("gemma-4.litertlm", "Return only edited text.", "hello");
         assert!(prompt.starts_with("<|turn>system\nReturn only edited text."));
         assert!(prompt.contains("<|turn>user\nInput text:\n---\nhello\n---"));
         assert!(prompt.ends_with("<|turn>model\n"));
+    }
+
+    #[test]
+    fn formats_qwen_three_chat_turns_without_thinking() {
+        let prompt = chat_prompt("qwen3_4b.litertlm", "Return only edited text.", "hello");
+        assert!(prompt.starts_with("<|im_start|>system\nReturn only edited text."));
+        assert!(prompt.contains("<|im_start|>user\nInput text:\n---\nhello\n---\n<|im_end|>"));
+        assert!(prompt.ends_with("<|im_start|>assistant\n<think>\n\n</think>\n\n"));
     }
 }

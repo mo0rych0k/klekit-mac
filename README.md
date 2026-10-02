@@ -11,10 +11,10 @@ KleKit lets you dictate text using your voice or refine selected text on your ma
 ## ✨ Features
 
 - 🎙️ **Voice Dictation** — Record voice input with a global hotkey, transcribe offline via Whisper STT, and paste the transcription directly at your cursor.
-- ✍️ **Text Refinement & Agents** — Highlight any text in any app, trigger a custom Agent hotkey, and have Gemma automatically refine, edit, format, or translate it in place.
+- ✍️ **Text Refinement & Agents** — Highlight any text in any app, trigger a custom Agent hotkey, and have the selected local LLM refine, edit, format, or translate it in place.
 - 🔒 **100% Offline** — All processing happens locally on-device, ensuring complete privacy.
 - ⚡ **macOS Native & Accelerated** — Dynamic compilation and execution tailored to Apple Silicon (Metal/XNNPACK) on macOS.
-- 🧠 **Smart Gemma 4 Refiner** — Google AI Edge **Gemma 4 E4B** model can fix text, translate, format business messages, structure speech, or create AI-agent prompts.
+- 🧠 **Smart Local Refiner** — **Gemma 4 E4B** or **Qwen3 4B** can fix text, translate, format business messages, structure speech, or create AI-agent prompts.
 - 🧩 **Five Prompt Presets** — Every agent configuration can use **No Preset**, **Fix Text**, **Business Style**, **Structured Text**, or **Create Prompt**; a Custom Prompt remains available for extra instructions.
 - ⏱️ **Bounded Recording** — Choose a maximum recording length from 1 to 10 minutes in Settings to keep memory use predictable.
 - 📜 **Optional Local History** — Keep voice history on-device, disable it entirely, or set automatic retention in days.
@@ -29,19 +29,19 @@ KleKit operates via two distinct pipelines:
 
 1. **Voice Dictation (Whisper STT):**
 ```
-Voice Hotkey (hold) ──> cpal Audio Recorder ──> whisper-rs STT (GGML) ──> (Optional Gemma 4 LLM) ──> OS Paste Inject
+Voice Hotkey (hold) ──> cpal Audio Recorder ──> whisper-rs STT (GGML) ──> (Optional active LLM) ──> OS Paste Inject
 ```
 
-2. **Selected Text Refinement (Gemma LLM Agents):**
+2. **Selected Text Refinement (Local LLM Agents):**
 ```
-Agent Hotkey ──> OS Copy (Cmd+C) ──> Gemma 4 LLM (LiteRT-LM) ──> OS Paste Inject (Cmd+V)
+Agent Hotkey ──> OS Copy (Cmd+C) ──> Selected LLM (LiteRT-LM) ──> OS Paste Inject (Cmd+V)
 ```
 
 | Module | Technology / Implementation | Role |
 |---|---|---|
 | Audio capture | `cpal` (see [src/audio.rs](src/audio.rs)) | 16 kHz mono PCM from mic |
 | Speech-to-text | `whisper-rs` (whisper.cpp) | Offline transcription |
-| Text refinement | [llm_refiner.rs](src/bin/llm_refiner.rs) (`litert-lm` CLI / Gemma 4 E4B) | Preset-driven text transformation |
+| Text refinement | [llm_refiner.rs](src/bin/llm_refiner.rs) (`litert-lm` CLI / Gemma 4 E4B or Qwen3 4B) | Preset-driven text transformation |
 | OS integration | [src/os_integration.rs](src/os_integration.rs) (`arboard` + CoreGraphics) | Hotkey & clipboard paste |
 | App shell | `Tauri 2` (see [src-tauri/Cargo.toml](src-tauri/Cargo.toml)) | Menu-bar tray app |
 
@@ -50,8 +50,8 @@ The core coordinator for this workflow is the [VoiceAssistantEngine](src/lib.rs)
 ### 🍏 New macOS Inference Engine
 Unlike the old GGUF-based inference, KleKit now utilizes Google's official **AI Edge LiteRT-LM** engine. 
 - The Rust sidecar dynamically locates the `litert-lm` command-line tool within your system `PATH`, with a fallback for macOS Python environments (`~/Library/Python/3.14/bin/litert-lm`).
-- It executes the official Gemma 4 E4B model in `.litertlm` format.
-- The sidecar uses Gemma 4 chat turns and is rebuilt automatically in development when its source changes.
+- It executes the selected compatible Gemma or Qwen model in `.litertlm` format.
+- The sidecar uses the correct chat format for the selected model and disables the CLI's automatic template, so the prompt is applied exactly once. It is rebuilt automatically in development when its source changes.
 
 ---
 
@@ -64,6 +64,7 @@ Unlike the old GGUF-based inference, KleKit now utilizes Google's official **AI 
 - Model files stored anywhere on the local disk (**not bundled in the app**):
   - `models/ggml-large-v3-turbo.bin` — full Whisper large-v3-turbo model ([download](https://huggingface.co/ggerganov/whisper.cpp))
   - `models/gemma-4-E4B-it.litertlm` — Gemma 4 E4B official Google AI Edge model
+  - `models/qwen3_4b_mixed_int4.litertlm` — Qwen3 4B mixed-int4 LiteRT Community model
 
 ---
 
@@ -96,11 +97,11 @@ cargo tauri dev
 In **Settings → Model Files**, click **Choose…** to open the native macOS file picker, or paste a full path manually:
 
 - **Whisper / Vesper `.bin`** is needed only for voice dictation.
-- **Gemma `.litertlm`** is needed only for text refinement or optional voice refinement.
+- **Gemma or Qwen 3 `.litertlm`** is needed only for text refinement or optional voice refinement. Choose the active LLM in Settings; both paths are stored independently.
 
 You may configure either model independently. A missing model is reported only when its corresponding feature is used, with a direct explanation of what to configure.
 
-For example, text-only refinement requires Gemma but not Whisper/Vesper. Voice dictation works without Gemma when **Enable Gemma LLM Refinement on dictated voice** is disabled. Invalid paths are rejected when Settings are saved, and the app tells you which file to select.
+For example, text-only refinement requires the active LLM but not Whisper/Vesper. Voice dictation works without an LLM when **Enable active LLM refinement on dictated voice** is disabled. Invalid paths are rejected when Settings are saved, and the app tells you which file to select.
 
 ### 5. Grant permissions
 On first launch, the OS will prompt for:
@@ -127,6 +128,8 @@ Settings are stored in `~/Library/Application Support/klekit/config.json` on mac
   "history_retention_days": 0,
   "whisper_model_path": "/Users/you/Models/ggml-large-v3-turbo.bin",
   "gemma_model_path": "/Users/you/Models/gemma-4-E4B-it.litertlm",
+  "qwen_model_path": "/Users/you/Models/qwen3.litertlm",
+  "active_llm_model": "gemma",
   "agents": []
 }
 ```
@@ -135,7 +138,7 @@ Settings are stored in `~/Library/Application Support/klekit/config.json` on mac
 
 The system prompt presets and vocabulary defaults are loaded from the [resources/](resources/) folder:
 - **Voice Recognition Hints**: [prompt_for_speak.txt](resources/prompt_for_speak.txt) is a plain-text list of technical keywords used as Whisper's initial prompt.
-- **LLM Refiner Presets**: [gemma_prompts.json](resources/gemma_prompts.json) contains the Gemma 4 base prompt and agent templates.
+- **LLM Refiner Presets**: [gemma_prompts.json](resources/gemma_prompts.json) contains the base prompt and agent templates.
 
 ---
 
@@ -147,9 +150,9 @@ KleKit utilizes a "Zero-Memory Idle" state:
 |---|---|
 | Idle (models unloaded) | ~20–30 MB |
 | Transcribing (Whisper loaded) | ~500 MB |
-| Refining (Gemma 4 running via LiteRT) | ~2–3 GB (during inference only) |
+| Refining (active LLM running via LiteRT) | ~2–3 GB (during inference only) |
 
-Whisper is automatically unloaded after **60 seconds** of inactivity. Gemma runs only for the lifetime of its `litert-lm` subprocess.
+Whisper is automatically unloaded after **60 seconds** of inactivity. The active LLM runs only for the lifetime of its `litert-lm` subprocess.
 
 ---
 

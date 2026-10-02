@@ -1504,7 +1504,7 @@
 
                     <div style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
                         <h4 style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--accent-purple); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 4px;">🧠 Model Files</h4>
-                        <p style="margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.45;">Models are external and are not bundled with KleKit. Paste a full file path. Leave Whisper empty for text-only tools; leave Gemma empty when voice dictation does not need refinement.</p>
+                        <p style="margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.45;">Models are external and are not bundled with KleKit. Leave Whisper empty for text-only tools; configure Gemma or Qwen 3 for LLM refinement.</p>
                         <div class="form-group">
                             <label for="global-whisper-model-path">Whisper / Vesper model file (.bin, required only for voice)</label>
                             <div style="display: flex; gap: 8px;">
@@ -1518,6 +1518,20 @@
                                 <input type="text" id="global-gemma-model-path" placeholder="/Users/you/Models/gemma-4-E4B-it.litertlm" onchange="updateModelPath('gemma_model_path', this.value)">
                                 <button type="button" class="btn btn-secondary" onclick="chooseModelFile('gemma_model_path')">Choose…</button>
                             </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="global-qwen-model-path">Qwen 3 model file (.litertlm)</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="global-qwen-model-path" placeholder="/Users/you/Models/qwen3.litertlm" onchange="updateModelPath('qwen_model_path', this.value)">
+                                <button type="button" class="btn btn-secondary" onclick="chooseModelFile('qwen_model_path')">Choose…</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="global-active-llm-model">Active LLM model</label>
+                            <select id="global-active-llm-model" onchange="updateActiveLlmModel(this.value)" style="background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px; color: var(--text-primary);">
+                                <option value="gemma">Gemma</option>
+                                <option value="qwen">Qwen 3</option>
+                            </select>
                         </div>
                     </div>
 
@@ -1598,7 +1612,7 @@
 
                         <div class="setting-row"
                             style="justify-content: space-between; align-items: center; border: none; padding: 6px 0; background: transparent; border-radius: 0;">
-                            <label for="global-enable-gemma">Enable Gemma LLM Refinement on dictated voice (auto-correct
+                            <label for="global-enable-gemma">Enable active LLM refinement on dictated voice (auto-correct
                                 grammar offline)</label>
                             <label
                                 style="position: relative; display: inline-block; width: 44px; height: 24px; margin: 0; flex-shrink: 0;">
@@ -1797,7 +1811,9 @@
             save_history: true,
             history_retention_days: 0,
             whisper_model_path: '',
-            gemma_model_path: ''
+            gemma_model_path: '',
+            qwen_model_path: '',
+            active_llm_model: 'gemma'
         };
         let activeAgentId = null;
         let isRecordingHotkey = false;
@@ -2008,6 +2024,8 @@
                     updateVoiceRecordingLimit(localSettings.voice_max_recording_minutes || 2);
                     document.getElementById('global-whisper-model-path').value = localSettings.whisper_model_path || '';
                     document.getElementById('global-gemma-model-path').value = localSettings.gemma_model_path || '';
+                    document.getElementById('global-qwen-model-path').value = localSettings.qwen_model_path || '';
+                    document.getElementById('global-active-llm-model').value = localSettings.active_llm_model || 'gemma';
 
                     // Load Global Voice Settings
                     const voiceHotkeyValEl = document.getElementById('global-voice-hotkey-input');
@@ -2126,6 +2144,11 @@
             autoSaveSettings();
         }
 
+        function updateActiveLlmModel(value) {
+            localSettings.active_llm_model = value;
+            autoSaveSettings();
+        }
+
         async function chooseModelFile(field) {
             const dialog = window.__TAURI__ && window.__TAURI__.dialog;
             if (!dialog || !dialog.open) {
@@ -2133,14 +2156,15 @@
                 return;
             }
             const isWhisper = field === 'whisper_model_path';
+            const isQwen = field === 'qwen_model_path';
             const selected = await dialog.open({
                 multiple: false,
                 directory: false,
-                title: isWhisper ? 'Select Whisper / Vesper model' : 'Select Gemma model',
-                filters: [{ name: isWhisper ? 'Whisper model' : 'Gemma model', extensions: isWhisper ? ['bin'] : ['litertlm'] }]
+                title: isWhisper ? 'Select Whisper / Vesper model' : isQwen ? 'Select Qwen 3 model' : 'Select Gemma model',
+                filters: [{ name: isWhisper ? 'Whisper model' : isQwen ? 'Qwen 3 model' : 'Gemma model', extensions: isWhisper ? ['bin'] : ['litertlm'] }]
             });
             if (typeof selected === 'string') {
-                const input = document.getElementById(isWhisper ? 'global-whisper-model-path' : 'global-gemma-model-path');
+                const input = document.getElementById(isWhisper ? 'global-whisper-model-path' : isQwen ? 'global-qwen-model-path' : 'global-gemma-model-path');
                 input.value = selected;
                 updateModelPath(field, selected);
             }

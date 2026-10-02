@@ -329,14 +329,21 @@ impl VoiceAssistantEngine {
     }
 
     fn run_refiner(&self, text: &str, system_prompt: &str, target_language: &str) -> Result<String> {
-        let model_path = self.configured_model_path("Gemma", &self.settings.lock().unwrap().gemma_model_path)?;
-        let model_name = model_path.file_name().map(|f| f.to_string_lossy()).unwrap_or_else(|| "Gemma 4".into());
+        let settings = self.settings.lock().unwrap();
+        let (model_label, configured_path) = match settings.active_llm_model.as_str() {
+            "gemma" => ("Gemma", &settings.gemma_model_path),
+            "qwen" => ("Qwen 3", &settings.qwen_model_path),
+            _ => anyhow::bail!("No active LLM model is selected. Open Settings → Model Files and select Gemma or Qwen 3."),
+        };
+        let model_path = self.configured_model_path(model_label, configured_path)?;
+        drop(settings);
+        let model_name = model_path.file_name().map(|f| f.to_string_lossy()).unwrap_or_else(|| model_label.into());
         self.log(format!("🔮 Refining with local {} (target lang: {})...", model_name, target_language));
-        let mut child = std::process::Command::new(&self.refiner_bin_path).arg(&model_path).arg(system_prompt).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).spawn().context("Could not start Gemma. Confirm litert-lm is installed and the selected Gemma model is compatible.")?;
+        let mut child = std::process::Command::new(&self.refiner_bin_path).arg(&model_path).arg(system_prompt).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).spawn().with_context(|| format!("Could not start {}. Confirm litert-lm is installed and the selected model is compatible.", model_label))?;
         use std::io::Write;
         child.stdin.take().context("Failed to open subprocess stdin")?.write_all(text.as_bytes()).context("Failed to write to stdin")?;
-        let output = child.wait_with_output().context("Error waiting for Gemma 4 subprocess")?;
-        if output.status.success() { Ok(strip_quotes(&String::from_utf8_lossy(&output.stdout))) } else { anyhow::bail!("Gemma processing failed. Check the model file and litert-lm installation. Details: {}", String::from_utf8_lossy(&output.stderr).trim()) }
+        let output = child.wait_with_output().context("Error waiting for local LLM subprocess")?;
+        if output.status.success() { Ok(strip_quotes(&String::from_utf8_lossy(&output.stdout))) } else { anyhow::bail!("{} processing failed. Check the model file and litert-lm installation. Details: {}", model_label, String::from_utf8_lossy(&output.stderr).trim()) }
     }
 
     fn configured_model_path(&self, model_name: &str, configured_path: &str) -> Result<PathBuf> {

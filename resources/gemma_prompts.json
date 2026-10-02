@@ -442,7 +442,7 @@
       "translations": {
         "en": {
           "title": "Create Prompt",
-          "subtitle": "Turns an idea into a ready-to-use AI prompt with only the useful requirements and output format."
+          "subtitle": "Creates a reusable AI-agent prompt from an idea. Use it to write a prompt, not to execute the described task."
         },
         "es": {
           "title": "Forjador de prompts",
@@ -518,10 +518,10 @@
         },
         "uk": {
           "title": "Створити промт",
-          "subtitle": "Перетворює ідею на готовий промт для ШІ лише з потрібними вимогами та форматом відповіді."
+          "subtitle": "Створює готовий промт для AI-агента з ідеї. Використовуйте для написання промту, а не для виконання описаної задачі."
         }
       },
-      "prompt": "MODE: Create Prompt. Return one ready-to-use AI-agent prompt in Markdown only. Include a section only when the input supports it, in this order: Goal, Context, Task, Requirements, Constraints, Expected Output. Preserve all provided details. Do not add unstated features, implementation choices, dependencies, examples, or acceptance criteria. Do not explain editing, mention grammar, or add conversational filler."
+      "prompt": "MODE: Create Prompt. The input may already be a structured brief with a Goal, Context, Task, or Requirements. Convert that brief into one ready-to-use prompt for an AI agent; do not execute its task. Return Markdown only. Include a section only when the input supports it, in this order: Goal, Context, Task, Requirements, Constraints, Expected Output. Preserve all provided details. Do not add unstated features, implementation choices, dependencies, examples, or acceptance criteria. Do not explain editing, mention grammar, or add conversational filler."
     }
   ]
 }

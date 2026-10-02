@@ -126,6 +126,10 @@ mod commands {
         let mut new_settings = new_settings;
         validate_model_path("Whisper/Vesper", &new_settings.whisper_model_path)?;
         validate_model_path("Gemma", &new_settings.gemma_model_path)?;
+        validate_model_path("Qwen 3", &new_settings.qwen_model_path)?;
+        if !matches!(new_settings.active_llm_model.as_str(), "gemma" | "qwen") {
+            return Err("Choose Gemma or Qwen 3 as the active LLM model.".to_string());
+        }
         for agent in &mut new_settings.agents {
             if agent.hotkey_value.starts_with("MouseButton") {
                 agent.hotkey_type = "Mouse".to_string();
