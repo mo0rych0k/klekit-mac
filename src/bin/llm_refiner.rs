@@ -47,7 +47,7 @@ fn main() -> Result<()> {
     let model_path = if args.len() > 1 {
         &args[1]
     } else {
-        "models/gemma-4-E2B-it.litertlm"
+        "models/gemma-4-E4B-it.litertlm"
     };
 
     // Parse system prompt from argv[2] with fallback to default strict Ukrainian grammar refiner
@@ -62,20 +62,7 @@ Follow these constraints strictly:
 4. Output ONLY the final corrected text."#.to_string()
     };
 
-    // 3. Construct the prompt payload using the system prompt to maintain formatting
-    let prompt = format!(
-        r#"{}{}
-
-Input text: "{}"
-Corrected output:"#,
-        system_prompt,
-        if system_prompt.contains("Strictly output ONLY") || system_prompt.contains("Follow these constraints strictly:") {
-            ""
-        } else {
-            "\n\nFollow these constraints strictly:\n1. DO NOT add any extra commentary, explanations, or introductory phrases.\n2. Output ONLY the final corrected text."
-        },
-        raw_transcript
-    );
+    let prompt = gemma_chat_prompt(&system_prompt, raw_transcript);
 
     // 4. Implement dynamic execution of the litert-lm binary using std::process::Command
     let litert_lm_path = find_litert_lm()?;
@@ -101,5 +88,24 @@ Corrected output:"#,
             output.status.code(),
             stderr_err.trim()
         );
+    }
+}
+
+fn gemma_chat_prompt(system_prompt: &str, user_text: &str) -> String {
+    format!(
+        "<|turn>system\n{system_prompt}\n<|turn|>\n<|turn>user\nInput text:\n---\n{user_text}\n---\n<|turn|>\n<|turn>model\n"
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::gemma_chat_prompt;
+
+    #[test]
+    fn formats_gemma_four_chat_turns() {
+        let prompt = gemma_chat_prompt("Return only edited text.", "hello");
+        assert!(prompt.starts_with("<|turn>system\nReturn only edited text."));
+        assert!(prompt.contains("<|turn>user\nInput text:\n---\nhello\n---"));
+        assert!(prompt.ends_with("<|turn>model\n"));
     }
 }

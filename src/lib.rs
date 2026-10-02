@@ -20,10 +20,13 @@ pub enum AppState {
 }
 
 pub enum RecorderCommand {
-    Start,
+    Start(u8),
     Stop(crossbeam_channel::Sender<Result<Vec<f32>>>),
 }
 
+type StatusCallback = Box<dyn Fn(AppState) + Send + Sync + 'static>;
+type PasteCallback = Arc<dyn Fn(String) + Send + Sync + 'static>;
+type LogCallback = Box<dyn Fn(String) + Send + Sync + 'static>;
 
 pub struct VoiceAssistantEngine {
     state: Arc<Mutex<AppState>>,
@@ -32,9 +35,9 @@ pub struct VoiceAssistantEngine {
     whisper_model_path: PathBuf,
     gemma_model_path: PathBuf,
     refiner_bin_path: PathBuf,
-    on_status_change: Arc<Mutex<Option<Box<dyn Fn(AppState) + Send + Sync + 'static>>>>,
-    on_paste: Arc<Mutex<Option<Arc<dyn Fn(String) + Send + Sync + 'static>>>>,
-    on_log: Arc<Mutex<Option<Box<dyn Fn(String) + Send + Sync + 'static>>>>,
+    on_status_change: Arc<Mutex<Option<StatusCallback>>>,
+    on_paste: Arc<Mutex<Option<PasteCallback>>>,
+    on_log: Arc<Mutex<Option<LogCallback>>>,
     /// Shared pointer to the live settings; swapped atomically by the UI on save.
     pub settings: Arc<Mutex<Arc<AppSettings>>>,
     pub db: Arc<db::DbManager>,
@@ -61,6 +64,9 @@ impl VoiceAssistantEngine {
                 current_settings.agents = db_agents;
                 *settings_guard = Arc::new(current_settings);
             }
+        }
+        if let Ok(settings_guard) = settings.lock() {
+            let _ = db.prune_history(settings_guard.history_retention_days);
         }
 
         Self {
@@ -214,7 +220,8 @@ impl VoiceAssistantEngine {
         });
 
         engine.log("\n🔴 Recording activated (Hold-to-Talk)! Speak...");
-        if let Err(e) = recorder_tx.send(RecorderCommand::Start) {
+        let max_minutes = engine.settings.lock().unwrap().voice_max_recording_minutes.clamp(1, 10);
+        if let Err(e) = recorder_tx.send(RecorderCommand::Start(max_minutes)) {
             engine.log(format!("❌ Failed to start recording: {:?}", e));
             engine.update_state(AppState::Idle);
         }
@@ -288,69 +295,41 @@ impl VoiceAssistantEngine {
                 })
             });
 
-        let refiner_path = &self.refiner_bin_path;
-        if !refiner_path.exists() {
-            self.log("⏳ Compiling sidecar llm_refiner...");
-            let build_status = std::process::Command::new("cargo")
-                .args(["build", "--bin", "llm_refiner"])
-                .status()
-                .context("Failed to build llm_refiner")?;
-            if !build_status.success() {
-                anyhow::bail!("Failed to compile llm_refiner");
-            }
-            if let Some(parent) = refiner_path.parent() {
-                std::fs::create_dir_all(parent).context("Failed to create bin directory")?;
-            }
-            std::fs::copy("target/debug/llm_refiner", refiner_path)
-                .context("Failed to copy compiled llm_refiner to bin/llm_refiner")?;
-        }
+        self.refine_with_agent(text, &agent)
+    }
 
-        let system_prompt = build_llm_prompt(&agent);
-        let model_name = self.gemma_model_path
-            .file_name()
-            .map(|f| f.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "Gemma 4".to_string());
-        self.log(format!("🔮 Prompt for LLM (Model: {}):\n{}", model_name, system_prompt));
-
+    fn refine_with_agent(&self, text: &str, agent: &settings::AgentProfile) -> Result<String> {
+        let system_prompt = build_llm_prompt(agent, text);
+        if system_prompt.is_empty() { return Ok(text.to_string()); }
+        self.ensure_refiner()?;
         self.update_state(AppState::Refining);
-        self.log(format!("🔮 Refining text with local Gemma 4 (target lang: {})...", agent.target_language));
-        self.log(format!("🔮 Launching llm_refiner sidecar using model: {}", model_name));
-        let mut child = std::process::Command::new(refiner_path)
-            .arg(&self.gemma_model_path)
-            .arg(&system_prompt)
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .spawn()
-            .context("Failed to launch llm_refiner")?;
-
-        {
-            use std::io::Write;
-            let mut stdin = child
-                .stdin
-                .take()
-                .context("Failed to open subprocess stdin")?;
-            stdin
-                .write_all(text.as_bytes())
-                .context("Failed to write to stdin")?;
-        }
-
-        let output = child
-            .wait_with_output()
-            .context("Error waiting for Gemma 4 subprocess")?;
-        
+        let result = self.run_refiner(text, &system_prompt, &agent.target_language);
         self.update_state(AppState::Idle);
-        
-        if output.status.success() {
-            let refined_raw = String::from_utf8_lossy(&output.stdout);
-            Ok(strip_quotes(&refined_raw))
-        } else {
-            let stderr_err = String::from_utf8_lossy(&output.stderr);
-            anyhow::bail!(
-                "Gemma subprocess failed with exit code: {:?}. Error: {}",
-                output.status.code(),
-                stderr_err.trim()
-            )
-        }
+        result
+    }
+
+    fn ensure_refiner(&self) -> Result<()> {
+        let source_is_newer = cfg!(debug_assertions) && matches!(
+            (std::fs::metadata("src/bin/llm_refiner.rs").and_then(|source| source.modified()), std::fs::metadata(&self.refiner_bin_path).and_then(|binary| binary.modified())),
+            (Ok(source), Ok(binary)) if source > binary
+        );
+        if self.refiner_bin_path.exists() && !source_is_newer { return Ok(()); }
+        self.log("⏳ Compiling sidecar llm_refiner...");
+        let status = std::process::Command::new("cargo").args(["build", "--bin", "llm_refiner"]).status().context("Failed to build llm_refiner")?;
+        if !status.success() { anyhow::bail!("Failed to compile llm_refiner"); }
+        if let Some(parent) = self.refiner_bin_path.parent() { std::fs::create_dir_all(parent).context("Failed to create bin directory")?; }
+        std::fs::copy("target/debug/llm_refiner", &self.refiner_bin_path).context("Failed to copy compiled llm_refiner")?;
+        Ok(())
+    }
+
+    fn run_refiner(&self, text: &str, system_prompt: &str, target_language: &str) -> Result<String> {
+        let model_name = self.gemma_model_path.file_name().map(|f| f.to_string_lossy()).unwrap_or_else(|| "Gemma 4".into());
+        self.log(format!("🔮 Refining with local {} (target lang: {})...", model_name, target_language));
+        let mut child = std::process::Command::new(&self.refiner_bin_path).arg(&self.gemma_model_path).arg(system_prompt).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).spawn().context("Failed to launch llm_refiner")?;
+        use std::io::Write;
+        child.stdin.take().context("Failed to open subprocess stdin")?.write_all(text.as_bytes()).context("Failed to write to stdin")?;
+        let output = child.wait_with_output().context("Error waiting for Gemma 4 subprocess")?;
+        if output.status.success() { Ok(strip_quotes(&String::from_utf8_lossy(&output.stdout))) } else { anyhow::bail!("Gemma subprocess failed: {}", String::from_utf8_lossy(&output.stderr).trim()) }
     }
 
     async fn run_processing_pipeline(self: &Arc<Self>, audio_data: Vec<f32>) {
@@ -456,60 +435,8 @@ impl VoiceAssistantEngine {
             // ---------------------------------
 
             let refined = if s.enable_gemma {
-                let refiner_path = &engine_blocking.refiner_bin_path;
-                if !refiner_path.exists() {
-                    engine_blocking.log("⏳ Compiling sidecar llm_refiner...");
-                    let build_status = std::process::Command::new("cargo")
-                        .args(["build", "--bin", "llm_refiner"])
-                        .status()
-                        .context("Failed to build llm_refiner")?;
-                    if !build_status.success() {
-                        anyhow::bail!("Failed to compile llm_refiner");
-                    }
-                    if let Some(parent) = refiner_path.parent() {
-                        std::fs::create_dir_all(parent).context("Failed to create bin directory")?;
-                    }
-                    std::fs::copy("target/debug/llm_refiner", refiner_path)
-                        .context("Failed to copy compiled llm_refiner to bin/llm_refiner")?;
-                }
-
-                let system_prompt = build_llm_prompt(&agent);
-                let model_name = engine_blocking.gemma_model_path
-                    .file_name()
-                    .map(|f| f.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| "Gemma 4".to_string());
-                engine_blocking.log(format!("🔮 Prompt for LLM (Model: {}):\n{}", model_name, system_prompt));
-
-                engine_blocking.update_state(AppState::Refining);
-                engine_blocking.log(format!("🔮 Refining with local Gemma 4 (target lang: {})...", agent.target_language));
-                engine_blocking.log(format!("🔮 Launching llm_refiner sidecar using model: {}", model_name));
-                let mut child = std::process::Command::new(refiner_path)
-                    .arg(&engine_blocking.gemma_model_path)
-                    .arg(&system_prompt)          // argv[2]: dynamic system prompt
-                    .stdin(std::process::Stdio::piped())
-                    .stdout(std::process::Stdio::piped())
-                    .spawn()
-                    .context("Failed to launch llm_refiner")?;
-
-                {
-                    use std::io::Write;
-                    let mut stdin = child
-                        .stdin
-                        .take()
-                        .context("Failed to open subprocess stdin")?;
-                    stdin
-                        .write_all(raw_transcript.as_bytes())
-                        .context("Failed to write to stdin")?;
-                }
-
-                let output = child
-                    .wait_with_output()
-                    .context("Error waiting for Gemma 4 subprocess")?;
-                let refined_raw = String::from_utf8_lossy(&output.stdout);
-                strip_quotes(&refined_raw)
-            } else {
-                raw_transcript.clone()
-            };
+                engine_blocking.refine_with_agent(&raw_transcript, &agent)?
+            } else { raw_transcript.clone() };
 
             Ok(Some((raw_transcript, refined)))
         })
@@ -529,8 +456,10 @@ impl VoiceAssistantEngine {
                     let aid = self.active_agent_id.lock().unwrap();
                     aid.clone().unwrap_or_default()
                 };
-                if let Err(e) = self.db.insert_log(&raw_text, &refined_text, &active_id) {
-                    self.log(format!("❌ Failed to write record to history database: {:?}", e));
+                if settings_snapshot.save_history {
+                    if let Err(e) = self.db.insert_log(&raw_text, &refined_text, &active_id) {
+                        self.log(format!("❌ Failed to write record to history database: {:?}", e));
+                    }
                 }
 
                 self.log("\n📋 Processing results:");
@@ -680,10 +609,14 @@ fn is_valid_speech_transcript(text: &str) -> bool {
 }
 
 /// Assembles the full Gemma 4 turn-template prompt from the active agent profile.
-fn build_llm_prompt(agent: &settings::AgentProfile) -> String {
+fn build_llm_prompt(agent: &settings::AgentProfile, text: &str) -> String {
+    if agent.preset_id == "None" {
+        return agent.custom_prompt.trim().to_string();
+    }
+
     let config = settings::load_gemma_prompts();
     
-    let preset_prompt = if agent.preset_id == "None" || agent.preset_id.trim().is_empty() {
+    let preset_prompt = if agent.preset_id.trim().is_empty() {
         "".to_string()
     } else {
         config.presets.iter()
@@ -693,15 +626,14 @@ fn build_llm_prompt(agent: &settings::AgentProfile) -> String {
     };
     
     let language_instruction = if agent.target_language.trim().is_empty() || agent.target_language == "No Translation" {
-        "Maintain the original language (translate to clear English only if explicitly requested, otherwise fix the original language).".to_string()
+        let language = detected_input_language(text);
+        format!("OUTPUT LANGUAGE: The input language is {language}. Write every heading and every sentence in {language}. Never output English unless the input language is English.")
     } else {
-        format!("Translate the text to {} and refine it.", agent.target_language.trim())
+        format!("OUTPUT LANGUAGE: Translate the entire final result to {}. This overrides any instruction to preserve the input language. Do not leave the final result in the input language.", agent.target_language.trim())
     };
-
-    let base_prompt = config.default_prompt.replace("{{LANGUAGE_INSTRUCTION}}", &language_instruction);
     
     let mut prompt_parts = Vec::new();
-    prompt_parts.push(base_prompt);
+    prompt_parts.push(config.default_prompt);
     
     if !preset_prompt.trim().is_empty() {
         prompt_parts.push(preset_prompt.trim().to_string());
@@ -710,8 +642,19 @@ fn build_llm_prompt(agent: &settings::AgentProfile) -> String {
     if !agent.custom_prompt.trim().is_empty() {
         prompt_parts.push(agent.custom_prompt.trim().to_string());
     }
+    prompt_parts.push(language_instruction);
     
     prompt_parts.join("\n")
+}
+
+fn detected_input_language(text: &str) -> &'static str {
+    if text.chars().any(|c| matches!(c, 'і' | 'І' | 'ї' | 'Ї' | 'є' | 'Є' | 'ґ' | 'Ґ')) {
+        "Ukrainian"
+    } else if text.chars().any(|c| c.is_ascii_alphabetic()) {
+        "English"
+    } else {
+        "the same language as the input"
+    }
 }
 
 /// Resolves model and helper binary paths dynamically across various execution directory structures.
@@ -791,14 +734,7 @@ pub fn strip_quotes(s: &str) -> String {
         let first = trimmed.chars().next().unwrap();
         let last = trimmed.chars().last().unwrap();
 
-        let is_quote = match (first, last) {
-            ('"', '"') => true,
-            ('\'', '\'') => true,
-            ('“', '”') => true,
-            ('‘', '’') => true,
-            ('«', '»') => true,
-            _ => false,
-        };
+        let is_quote = matches!((first, last), ('"', '"') | ('\'', '\'') | ('“', '”') | ('‘', '’') | ('«', '»'));
 
         if is_quote {
             let mut chars = trimmed.chars();
@@ -828,6 +764,41 @@ mod tests {
         assert_eq!(strip_quotes("Hello"), "Hello");
         assert_eq!(strip_quotes("\"Hello"), "\"Hello");
         assert_eq!(strip_quotes("Hello\""), "Hello\"");
+    }
+
+    #[test]
+    fn test_no_preset_uses_only_the_custom_prompt() {
+        let mut agent = settings::AgentProfile {
+            id: "no_preset".to_string(),
+            name: "No Preset".to_string(),
+            target_language: "No Translation".to_string(),
+            preset_id: "None".to_string(),
+            custom_prompt: String::new(),
+            hotkey_type: "Keyboard".to_string(),
+            hotkey_value: String::new(),
+            is_active: true,
+        };
+
+        assert!(build_llm_prompt(&agent, "тест").is_empty());
+        agent.custom_prompt = "Return the text unchanged.".to_string();
+        assert_eq!(build_llm_prompt(&agent, "тест"), "Return the text unchanged.");
+    }
+
+    #[test]
+    fn selected_output_language_overrides_preset_language() {
+        let agent = settings::AgentProfile {
+            id: "test".to_string(), name: "Test".to_string(), target_language: "English".to_string(),
+            preset_id: "fix_errors_only".to_string(), custom_prompt: String::new(), hotkey_type: "Keyboard".to_string(), hotkey_value: String::new(), is_active: true,
+        };
+        let prompt = build_llm_prompt(&agent, "Привіт");
+        assert!(prompt.contains("MODE: Fix Text"));
+        assert!(prompt.ends_with("OUTPUT LANGUAGE: Translate the entire final result to English. This overrides any instruction to preserve the input language. Do not leave the final result in the input language."));
+    }
+
+    #[test]
+    fn detects_ukrainian_and_english_input() {
+        assert_eq!(detected_input_language("Привіт, як справи?"), "Ukrainian");
+        assert_eq!(detected_input_language("Hello, how are you?"), "English");
     }
 
     #[test]

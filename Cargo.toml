@@ -21,15 +21,6 @@ whisper-rs = "0.11"
 # SQLite Database
 rusqlite = { version = "0.31.0", features = ["bundled"] }
 
-# For test temp directories
-tempfile = "3.10.0"
-
-# TOML parsing for blueprints
-toml = "0.8"
-
-# Library for reading/writing WAV files (needed for testing)
-hound = "3.5" 
-
 # For convenient error handling
 anyhow = "1.0"
 
@@ -46,6 +37,9 @@ crossbeam-channel = "0.5"
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+
+[dev-dependencies]
+tempfile = "3.10.0"
 
 # ── macOS-only dependencies ──────────────────────────────────────────────────
 [target.'cfg(target_os = "macos")'.dependencies]

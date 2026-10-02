@@ -1,11 +1,8 @@
 /target
 
-# AI agent tooling — local only, never commit
-.agents/
-AGENTS.md
+# Local AI tooling
 .cargo/
-tasks.md
-skills-lock.json
+graphify-out/
 .antigravitycli/
 .antigravity.cli/
 
@@ -43,5 +40,3 @@ skills-lock.json
 
 # Documentation
 docs/
-
-

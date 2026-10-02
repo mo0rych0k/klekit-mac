@@ -51,7 +51,8 @@ const UI_TRANSLATIONS = {
     "search": "Search...",
     "voice_dictation_title": "Voice Dictation",
     "voice_status_label": "Status",
-    "voice_language_label": "Language"
+    "voice_language_label": "Language",
+    "voice_recording_limit": "⏱️ Maximum recording: 2 minutes per request — roughly 250–350 words, depending on language and speaking speed."
   },
   "es": {
     "nav_agents": "Config. de Agentes",
@@ -1077,6 +1078,7 @@ const UI_TRANSLATIONS = {
     "search": "Пошук...",
     "voice_dictation_title": "Голосове введення",
     "voice_status_label": "Статус",
-    "voice_language_label": "Мова"
+    "voice_language_label": "Мова",
+    "voice_recording_limit": "⏱️ Максимальний запис: 2 хвилини за один раз — приблизно 250–350 слів, залежно від мови та темпу мовлення."
   }
 };

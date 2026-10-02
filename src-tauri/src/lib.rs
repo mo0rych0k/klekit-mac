@@ -106,8 +106,7 @@ mod commands {
     #[tauri::command]
     pub fn get_settings(state: tauri::State<'_, AppState>) -> AppSettings {
         let lock = state.settings.lock().unwrap();
-        let settings = (*lock.clone()).clone();
-        settings
+        (*lock.clone()).clone()
     }
 
     #[tauri::command]
@@ -144,12 +143,10 @@ mod commands {
         // 2. Validate cross-agent duplicate hotkeys (ignore empty hotkeys)
         let mut seen_hotkeys = std::collections::HashSet::new();
         for agent in &new_settings.agents {
-            if !agent.hotkey_value.trim().is_empty() {
-                if !seen_hotkeys.insert((&agent.hotkey_type, &agent.hotkey_value)) {
-                    let err_msg = format!("Duplicate hotkey assigned to multiple agents: {}", agent.hotkey_value);
-                    state.engine.log(format!("[commands] save_settings error: {}", err_msg));
-                    return Err(err_msg);
-                }
+            if !agent.hotkey_value.trim().is_empty() && !seen_hotkeys.insert((&agent.hotkey_type, &agent.hotkey_value)) {
+                let err_msg = format!("Duplicate hotkey assigned to multiple agents: {}", agent.hotkey_value);
+                state.engine.log(format!("[commands] save_settings error: {}", err_msg));
+                return Err(err_msg);
             }
         }
 
@@ -158,6 +155,7 @@ mod commands {
             state.engine.log(format!("[commands] save_settings DB error: {:?}", e));
             e.to_string()
         })?;
+        state.engine.db.prune_history(new_settings.history_retention_days).map_err(|e| e.to_string())?;
 
         // 3. Reconcile global hotkeys
         let _ = app.global_shortcut().unregister_all();
@@ -219,7 +217,7 @@ mod commands {
         state.engine.log(format!("[global-shortcut] Testing hotkey '{}' speculative registration...", hotkey));
 
         // Speculative bind: Register
-        if let Err(e) = app.global_shortcut().register(shortcut.clone()) {
+        if let Err(e) = app.global_shortcut().register(shortcut) {
             state.engine.log(format!("[global-shortcut] ❌ Speculative registration failed for hotkey '{}': {:?}", hotkey, e));
             eprintln!("⚠️ Speculative registration failed for hotkey '{}': {:?}", hotkey, e);
             
@@ -242,26 +240,17 @@ mod commands {
 
     #[tauri::command]
     pub fn get_history_page(page: i64, state: tauri::State<'_, AppState>) -> Result<Vec<klekit::db::LogRecord>, String> {
-        let res = state.engine.db.get_logs_page(50, page * 50).map_err(|e| {
-            e.to_string()
-        });
-        res
+        state.engine.db.get_logs_page(50, page * 50).map_err(|e| e.to_string())
     }
 
     #[tauri::command]
     pub fn delete_history_item(id: i64, state: tauri::State<'_, AppState>) -> Result<(), String> {
-        let res = state.engine.db.delete_log(id).map_err(|e| {
-            e.to_string()
-        });
-        res
+        state.engine.db.delete_log(id).map_err(|e| e.to_string())
     }
 
     #[tauri::command]
     pub fn clear_history(state: tauri::State<'_, AppState>) -> Result<(), String> {
-        let res = state.engine.db.clear_history().map_err(|e| {
-            e.to_string()
-        });
-        res
+        state.engine.db.clear_history().map_err(|e| e.to_string())
     }
 
     #[tauri::command]
@@ -339,7 +328,7 @@ fn spawn_mouse_listener(
                 "MouseButton5"               => Some(4),
                 _ => None,
             };
-            target_number.map_or(false, |tn| button_number == tn)
+            target_number == Some(button_number)
         } else {
             false
         };
@@ -377,7 +366,7 @@ fn spawn_mouse_listener(
                 "MouseButton5"               => Some(4),
                 _ => None,
             };
-            target_number.map_or(false, |tn| button_number == tn)
+            target_number == Some(button_number)
         });
 
         if let Some(agent) = matched {
@@ -489,8 +478,8 @@ pub fn run() {
 
     // 1. Initialize our engine — pass shared_settings so the pipeline reads configuration
     let engine = Arc::new(VoiceAssistantEngine::new(
-        "./models/ggml-large-v3-turbo-q5_0.bin",
-        "./models/gemma-4-E2B-it.litertlm",
+        "./models/ggml-large-v3-turbo.bin",
+        "./models/gemma-4-E4B-it.litertlm",
         "./bin/llm_refiner",
         Arc::clone(&shared_settings),
     ));
@@ -514,8 +503,8 @@ pub fn run() {
         let mut recorder = audio::AudioRecorder::new();
         while let Ok(cmd) = recorder_rx.recv() {
             match cmd {
-                RecorderCommand::Start => {
-                    if let Err(e) = recorder.start_recording() {
+                RecorderCommand::Start(max_minutes) => {
+                    if let Err(e) = recorder.start_recording(max_minutes) {
                         eprintln!("❌ Failed to start audio recording in GUI: {:?}", e);
                     }
                 }
@@ -554,7 +543,7 @@ pub fn run() {
                     };
 
                     let is_voice_shortcut = settings.voice_hotkey_type == "Keyboard" &&
-                        parse_shortcut(&settings.voice_hotkey_value).map_or(false, |s| s == *shortcut);
+                        parse_shortcut(&settings.voice_hotkey_value) == Some(*shortcut);
 
                     if is_voice_shortcut {
                         let e = Arc::clone(&engine_shortcut);
@@ -581,7 +570,7 @@ pub fn run() {
                     let matched_agent = settings.agents.iter().find(|a| {
                         a.is_active &&
                         a.hotkey_type == "Keyboard" && 
-                        parse_shortcut(&a.hotkey_value).map_or(false, |s| s == *shortcut)
+                        parse_shortcut(&a.hotkey_value) == Some(*shortcut)
                     });
 
                     if let Some(agent) = matched_agent {
@@ -591,11 +580,8 @@ pub fn run() {
                             "[global-shortcut] Match for agent '{}' ({}) with state {:?}",
                             agent.name, agent.id, event.state
                         ));
-                        match event.state {
-                            ShortcutState::Pressed => {
-                                run_os_refinement(e, agent_id);
-                            }
-                            _ => {}
+                        if event.state == ShortcutState::Pressed {
+                            run_os_refinement(e, agent_id);
                         }
                     } else {
                         engine_shortcut.log("[global-shortcut] No matching agent or voice shortcut found".to_string());
@@ -725,7 +711,7 @@ pub fn run() {
                 for agent in &boot_settings.agents {
                     if agent.is_active && agent.hotkey_type == "Keyboard" {
                         if let Some(shortcut) = parse_shortcut(&agent.hotkey_value) {
-                            match app.global_shortcut().register(shortcut.clone()) {
+                            match app.global_shortcut().register(shortcut) {
                                 Ok(_) => engine_toggle.log(format!(
                                     "[global-shortcut] ✅ Registered boot hotkey '{}' for agent '{}'",
                                     agent.hotkey_value, agent.name
@@ -899,7 +885,3 @@ fn rebuild_tray_menu(app_handle: &tauri::AppHandle) -> Result<(), tauri::Error> 
 
     Ok(())
 }
-
-
-
-

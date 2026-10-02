@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use rusqlite::Connection;
 use serde::{Serialize, Deserialize};
 use std::path::Path;
-use crate::settings::AgentProfile;
+use crate::settings::{default_agents, AgentProfile};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LogRecord {
@@ -57,19 +57,36 @@ impl DbManager {
         // Migration check for existing installations: add whisper_prompt column if missing
         let _ = conn.execute("ALTER TABLE agents ADD COLUMN whisper_prompt TEXT NOT NULL DEFAULT '';", []);
 
-        // Provision default agent if table is empty
-        let count: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM agents",
-            [],
-            |row| row.get(0),
-        ).context("Failed to count agents")?;
+        // Remove only the five untouched profiles accidentally provisioned by an earlier build.
+        conn.execute_batch(
+            "DELETE FROM agents WHERE custom_prompt = '' AND hotkey_value = '' AND (
+                (id = 'no_preset' AND name = 'No Preset') OR
+                (id = 'fix_text' AND name = 'Fix Text') OR
+                (id = 'business_style' AND name = 'Business Style') OR
+                (id = 'structured_text' AND name = 'Structured Text') OR
+                (id = 'create_prompt' AND name = 'Create Prompt')
+            );",
+        ).context("Failed to remove obsolete auto-created profiles")?;
 
+        // Create one editable configuration; prompt presets are selected inside it.
+        let count: i64 = conn.query_row("SELECT COUNT(*) FROM agents", [], |row| row.get(0))
+            .context("Failed to count agents")?;
         if count == 0 {
+            let agent = default_agents().into_iter().next().context("Missing default agent")?;
             conn.execute(
                 "INSERT INTO agents (id, name, stt_language, whisper_prompt, target_language, preset_id, custom_prompt, hotkey_type, hotkey_value, is_active)
-                 VALUES ('slack_refiner', 'Slack Refiner', 'auto', '', 'No Translation', 'workspace_sync', '', 'Keyboard', '', 1)",
-                [],
-            ).context("Failed to provision default agent")?;
+                 VALUES (?1, ?2, 'auto', '', ?3, ?4, ?5, ?6, ?7, ?8)",
+                (
+                    &agent.id,
+                    &agent.name,
+                    &agent.target_language,
+                    &agent.preset_id,
+                    &agent.custom_prompt,
+                    &agent.hotkey_type,
+                    &agent.hotkey_value,
+                    1,
+                ),
+            ).context("Failed to provision default profiles")?;
         }
 
         Ok(Self { conn: std::sync::Mutex::new(conn) })
@@ -118,6 +135,18 @@ impl DbManager {
     pub fn clear_history(&self) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute("DELETE FROM voice_history", [])?;
+        Ok(())
+    }
+
+    pub fn prune_history(&self, retention_days: u32) -> Result<()> {
+        if retention_days == 0 {
+            return Ok(());
+        }
+        let conn = self.conn.lock().map_err(|_| anyhow::anyhow!("History database lock poisoned"))?;
+        conn.execute(
+            "DELETE FROM voice_history WHERE timestamp < datetime('now', ?1)",
+            [format!("-{} days", retention_days)],
+        )?;
         Ok(())
     }
 
@@ -203,11 +232,12 @@ mod tests {
         manager.insert_log("raw 2", "refined 2", "agent_2").unwrap();
         manager.clear_history().unwrap();
         assert_eq!(manager.get_logs_page(50, 0).unwrap().len(), 0);
+        manager.prune_history(0).unwrap();
 
         // Test agents operations
         let default_agents = manager.get_all_agents().unwrap();
         assert_eq!(default_agents.len(), 1);
-        assert_eq!(default_agents[0].id, "slack_refiner");
+        assert_eq!(default_agents[0].id, "default_refiner");
         assert_eq!(default_agents[0].is_active, true);
 
         let custom_agent = AgentProfile {
@@ -224,7 +254,7 @@ mod tests {
         manager.save_agents(&[default_agents[0].clone(), custom_agent]).unwrap();
         let loaded_agents = manager.get_all_agents().unwrap();
         assert_eq!(loaded_agents.len(), 2);
-        assert_eq!(loaded_agents[1].id, "custom_agent");
-        assert_eq!(loaded_agents[1].is_active, false);
+        let custom_agent = loaded_agents.iter().find(|agent| agent.id == "custom_agent").unwrap();
+        assert!(!custom_agent.is_active);
     }
 }

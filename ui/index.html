@@ -1167,9 +1167,11 @@
         }
 
         input:checked+.slider-toggle {
-            background-color: var(--accent-purple);
+            background-color: var(--accent-purple) !important;
             box-shadow: 0 0 8px var(--accent-purple-glow);
         }
+
+        input:not(:checked)+.slider-toggle { background-color: #4b526d !important; }
 
         input:checked+.slider-toggle::before {
             transform: translateX(20px);
@@ -1453,6 +1455,13 @@
                             style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--accent-purple); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 4px;">
                             🎤 Global Voice Recorder</h4>
 
+                        <p style="margin: 0; padding: 9px 11px; border-radius: 7px; background: rgba(168, 85, 247, 0.10); color: var(--text-secondary); font-size: 12px; line-height: 1.45;">⏱️ Maximum recording: <strong id="voice-recording-limit">2 minutes</strong> per request.</p>
+
+                        <div class="form-group">
+                            <label for="global-voice-max-recording">Maximum recording length: <strong id="global-voice-max-recording-value">2 minutes</strong></label>
+                            <input type="range" id="global-voice-max-recording" min="1" max="10" step="1" value="2" oninput="updateGlobalVoiceMaxRecording(this.value)" style="width: 100%; accent-color: var(--accent-purple);">
+                        </div>
+
                         <div class="form-group">
                             <label>Voice Recording Hotkey</label>
                             <div class="hotkey-single-input-container">
@@ -1552,6 +1561,20 @@
                                 <span class="slider-toggle"
                                     style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b526d; transition: .3s; border-radius: 24px;"></span>
                             </label>
+                        </div>
+
+                        <div class="setting-row"
+                            style="justify-content: space-between; align-items: center; border: none; padding: 6px 0; background: transparent; border-bottom: 1px solid rgba(255,255,255,0.03); border-radius: 0;">
+                            <label for="global-save-history">Save voice text history on this device</label>
+                            <label style="position: relative; display: inline-block; width: 44px; height: 24px; margin: 0; flex-shrink: 0;">
+                                <input type="checkbox" id="global-save-history" onchange="updateGlobalSaveHistory()" style="opacity: 0; width: 0; height: 0; position: absolute;">
+                                <span class="slider-toggle" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b526d; transition: .3s; border-radius: 24px;"></span>
+                            </label>
+                        </div>
+
+                        <div class="setting-row" style="justify-content: space-between; align-items: center; border: none; padding: 6px 0; background: transparent; border-bottom: 1px solid rgba(255,255,255,0.03); border-radius: 0;">
+                            <label for="global-history-retention">History retention, days (0 = keep until cleared)</label>
+                            <input type="number" id="global-history-retention" min="0" step="1" onchange="updateGlobalHistoryRetention()" style="width: 76px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 10px; color: var(--text-primary);">
                         </div>
 
                         <div class="setting-row"
@@ -1751,7 +1774,9 @@
         let localSettings = {
             agents: [],
             enable_auto_paste: true,
-            enable_sounds: true
+            enable_sounds: true,
+            save_history: true,
+            history_retention_days: 0
         };
         let activeAgentId = null;
         let isRecordingHotkey = false;
@@ -1867,12 +1892,11 @@
         let historyEnd = false;
 
         let presetBlueprints = [
-            { id: 'None', title: 'No Preset', desc: 'Strictly use only the custom system prompt addon without any preset template instructions.', icon: 'minus-circle' },
-            { id: 'fix_errors_only', title: 'Fix Errors Only', desc: 'Cleans typos, grammar, and syntax while preserving raw conversational structure.', icon: 'check-circle' },
-            { id: 'spoken_to_written', title: 'Spoken to Written Transmuter', desc: 'Converts raw, informal verbal speech, filtering out filler words into structured written text.', icon: 'book-open' },
-            { id: 'workspace_sync', title: 'Workspace Sync', desc: 'Polishes internal team communication, balancing corporate, technical, and slang terms for Slack/Jira.', icon: 'slack' },
-            { id: 'formal_directive', title: 'Formal Directive', desc: 'Transforms words into strict, highly formal, professional, or legal-sounding syntax.', icon: 'briefcase' },
-            { id: 'prompt_smith', title: 'Prompt Smith', desc: 'Transforms rough ideas into structured markdown/XML instructions for engineering other AI models.', icon: 'cpu' }
+            { id: 'None', title: 'No Preset', desc: 'No built-in edits. An empty custom prompt leaves the text unchanged.', icon: 'minus-circle' },
+            { id: 'fix_errors_only', title: 'Fix Text', desc: 'Fixes spelling, grammar, punctuation and obvious speech-recognition errors without changing meaning.', icon: 'check-circle' },
+            { id: 'formal_directive', title: 'Business Style', desc: 'Rewrites the text in a concise, professional tone while preserving all details.', icon: 'briefcase' },
+            { id: 'spoken_to_written', title: 'Structured Text', desc: 'Turns spoken text into clear written structure, using headings or lists only when useful.', icon: 'book-open' },
+            { id: 'prompt_smith', title: 'Create Prompt', desc: 'Builds a ready-to-use AI prompt from the idea without inventing requirements.', icon: 'cpu' }
         ];
 
         async function loadPresets() {
@@ -1958,6 +1982,9 @@
                     localSettings = s;
                     document.getElementById('global-auto-paste').checked = localSettings.enable_auto_paste;
                     document.getElementById('global-enable-sounds').checked = localSettings.enable_sounds !== false;
+                    document.getElementById('global-save-history').checked = localSettings.save_history !== false;
+                    document.getElementById('global-history-retention').value = localSettings.history_retention_days || 0;
+                    updateVoiceRecordingLimit(localSettings.voice_max_recording_minutes || 2);
 
                     // Load Global Voice Settings
                     const voiceHotkeyValEl = document.getElementById('global-voice-hotkey-input');
@@ -2056,8 +2083,31 @@
             autoSaveSettings();
         }
 
+        function updateGlobalSaveHistory() {
+            localSettings.save_history = document.getElementById('global-save-history').checked;
+            autoSaveSettings();
+        }
+
+        function updateGlobalHistoryRetention() {
+            localSettings.history_retention_days = Math.max(0, Number(document.getElementById('global-history-retention').value) || 0);
+            autoSaveSettings();
+        }
+
         function updateGlobalVoiceWhisperPrompt(value) {
             localSettings.voice_whisper_prompt = value;
+            autoSaveSettings();
+        }
+
+        function updateVoiceRecordingLimit(minutes) {
+            const safeMinutes = Math.min(10, Math.max(1, Number(minutes) || 2));
+            document.getElementById('global-voice-max-recording').value = safeMinutes;
+            document.getElementById('global-voice-max-recording-value').textContent = `${safeMinutes} ${safeMinutes === 1 ? 'minute' : 'minutes'}`;
+            document.getElementById('voice-recording-limit').textContent = `${safeMinutes} ${safeMinutes === 1 ? 'minute' : 'minutes'}`;
+        }
+
+        function updateGlobalVoiceMaxRecording(minutes) {
+            localSettings.voice_max_recording_minutes = Math.min(10, Math.max(1, Number(minutes) || 2));
+            updateVoiceRecordingLimit(localSettings.voice_max_recording_minutes);
             autoSaveSettings();
         }
 

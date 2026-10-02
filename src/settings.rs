@@ -26,6 +26,11 @@ pub struct AppSettings {
     pub enable_sounds: bool,
     #[serde(default = "default_false")]
     pub enable_gemma: bool,
+    #[serde(default = "default_true")]
+    pub save_history: bool,
+    /// Number of days to retain history. Zero keeps history until the user clears it.
+    #[serde(default)]
+    pub history_retention_days: u32,
     #[serde(default = "default_voice_hotkey_type")]
     pub voice_hotkey_type: String,
     #[serde(default = "default_voice_hotkey_value")]
@@ -34,6 +39,8 @@ pub struct AppSettings {
     pub voice_stt_language: String,
     #[serde(default = "default_voice_whisper_prompt")]
     pub voice_whisper_prompt: String,
+    #[serde(default = "default_voice_max_recording_minutes")]
+    pub voice_max_recording_minutes: u8,
 }
 
 fn default_true() -> bool {
@@ -60,26 +67,35 @@ fn default_voice_whisper_prompt() -> String {
     "".to_string()
 }
 
+fn default_voice_max_recording_minutes() -> u8 { 2 }
+
+pub fn default_agents() -> Vec<AgentProfile> {
+    vec![AgentProfile {
+        id: "default_refiner".to_string(),
+        name: "Text Refiner".to_string(),
+        target_language: "No Translation".to_string(),
+        preset_id: "None".to_string(),
+        custom_prompt: String::new(),
+        hotkey_type: "Keyboard".to_string(),
+        hotkey_value: String::new(),
+        is_active: true,
+    }]
+}
+
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            agents: vec![AgentProfile {
-                id: "slack_refiner".to_string(),
-                name: "Slack Refiner".to_string(),
-                target_language: "No Translation".to_string(),
-                preset_id: "workspace_sync".to_string(),
-                custom_prompt: "".to_string(),
-                hotkey_type: "Keyboard".to_string(),
-                hotkey_value: "".to_string(),
-                is_active: true,
-            }],
+            agents: default_agents(),
             enable_auto_paste: true,
             enable_sounds: true,
             enable_gemma: default_false(),
+            save_history: default_true(),
+            history_retention_days: 0,
             voice_hotkey_type: default_voice_hotkey_type(),
             voice_hotkey_value: default_voice_hotkey_value(),
             voice_stt_language: default_voice_stt_language(),
             voice_whisper_prompt: default_voice_whisper_prompt(),
+            voice_max_recording_minutes: default_voice_max_recording_minutes(),
         }
     }
 }
@@ -108,8 +124,10 @@ const DEFAULT_GEMMA_PROMPTS_JSON: &str = include_str!("../resources/gemma_prompt
 const DEFAULT_PROMPT_FOR_SPEAK_TXT: &str = include_str!("../resources/prompt_for_speak.txt");
 
 pub fn load_gemma_prompts() -> GemmaPromptsConfig {
-    serde_json::from_str::<GemmaPromptsConfig>(DEFAULT_GEMMA_PROMPTS_JSON)
-        .expect("Embedded gemma_prompts.json must be valid JSON")
+    let mut config = serde_json::from_str::<GemmaPromptsConfig>(DEFAULT_GEMMA_PROMPTS_JSON)
+        .expect("Embedded gemma_prompts.json must be valid JSON");
+    config.presets.retain(|preset| preset.id != "workspace_sync");
+    config
 }
 
 pub fn load_prompt_for_speak() -> String {
@@ -171,8 +189,11 @@ mod tests {
     #[test]
     fn test_multi_agent_settings() {
         let settings = AppSettings::default();
-        assert_eq!(settings.agents.len(), 1); // slack default
-        assert_eq!(settings.agents[0].name, "Slack Refiner");
+        assert_eq!(settings.agents.len(), 1);
+        assert_eq!(settings.agents[0].preset_id, "None");
+        assert!(settings.save_history);
+        assert_eq!(settings.history_retention_days, 0);
+        assert_eq!(settings.voice_max_recording_minutes, 2);
     }
 
     #[test]
@@ -186,6 +207,7 @@ mod tests {
         let has_fix = prompts.presets.iter().any(|p| p.id == "fix_errors_only");
         assert!(has_none);
         assert!(has_fix);
+        assert_eq!(prompts.presets.len(), 5);
     }
 
     #[test]

@@ -21,8 +21,8 @@ async fn main() -> Result<()> {
     // Initialize our voice assistant engine with model paths
     let cli_settings = Arc::new(Mutex::new(Arc::new(AppSettings::load())));
     let engine = Arc::new(VoiceAssistantEngine::new(
-        "./models/ggml-large-v3-turbo-q5_0.bin",
-        "./models/gemma-4-E2B-it.litertlm",
+        "./models/ggml-large-v3-turbo.bin",
+        "./models/gemma-4-E4B-it.litertlm",
         "./bin/llm_refiner",
         cli_settings,
     ));
@@ -38,8 +38,8 @@ async fn main() -> Result<()> {
         let mut recorder = audio::AudioRecorder::new();
         while let Ok(cmd) = recorder_rx.recv() {
             match cmd {
-                RecorderCommand::Start => {
-                    if let Err(e) = recorder.start_recording() {
+                RecorderCommand::Start(max_minutes) => {
+                    if let Err(e) = recorder.start_recording(max_minutes) {
                         eprintln!("❌ Failed to start audio recording: {:?}", e);
                     }
                 }
@@ -83,7 +83,7 @@ async fn main() -> Result<()> {
         let state = engine.get_state();
         let engine_clone = Arc::clone(&engine);
         let recorder_tx_clone = recorder_tx.clone();
-        let active_id = "slack_refiner".to_string();
+        let active_id = "default_refiner".to_string();
         let res = if state == AppState::Recording {
             VoiceAssistantEngine::stop_and_process_for_agent(engine_clone, recorder_tx_clone, active_id)
         } else if state == AppState::Idle {
