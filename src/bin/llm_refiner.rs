@@ -16,15 +16,32 @@ fn find_litert_lm() -> Result<PathBuf> {
     }
 
     if let Ok(home) = std::env::var("HOME") {
-        let fallback = PathBuf::from(home)
-            .join("Library/Python/3.14/bin/litert-lm");
-        if fallback.is_file() {
-            return Ok(fallback);
+        let home_path = PathBuf::from(&home);
+        // Common macOS python user bins: 3.9 through 3.14
+        for py_ver in &["3.14", "3.13", "3.12", "3.11", "3.10", "3.9"] {
+            let candidate = home_path.join(format!("Library/Python/{}/bin/litert-lm", py_ver));
+            if candidate.is_file() {
+                return Ok(candidate);
+            }
+        }
+        let local_bin = home_path.join(".local/bin/litert-lm");
+        if local_bin.is_file() {
+            return Ok(local_bin);
+        }
+    }
+
+    for candidate_str in &[
+        "/opt/homebrew/bin/litert-lm",
+        "/usr/local/bin/litert-lm",
+    ] {
+        let candidate = PathBuf::from(candidate_str);
+        if candidate.is_file() {
+            return Ok(candidate);
         }
     }
 
     Err(anyhow!(
-        "litert-lm binary not found in PATH or at ~/Library/Python/3.14/bin/litert-lm"
+        "litert-lm binary not found in PATH or standard Python/Homebrew directories"
     ))
 }
 

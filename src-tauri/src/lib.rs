@@ -101,14 +101,84 @@ pub fn parse_shortcut(value: &str) -> Option<tauri_plugin_global_shortcut::Short
 mod commands {
     use super::{AppState, AppSettings, parse_shortcut, rebuild_tray_menu};
     use std::sync::Arc;
+    use std::collections::HashMap;
+    use std::sync::Mutex as StdMutex;
+    use once_cell::sync::Lazy;
+    use tauri::Emitter;
     use tauri_plugin_global_shortcut::GlobalShortcutExt;
+
+    static ACTIVE_DOWNLOADS: Lazy<StdMutex<HashMap<String, u32>>> = Lazy::new(|| StdMutex::new(HashMap::new()));
+
+    pub fn expand_tilde(p: &str) -> std::path::PathBuf {
+        let trimmed = p.trim();
+        if trimmed.starts_with("~/") {
+            if let Ok(home) = std::env::var("HOME") {
+                return std::path::PathBuf::from(home).join(&trimmed[2..]);
+            }
+        } else if trimmed == "~" {
+            if let Ok(home) = std::env::var("HOME") {
+                return std::path::PathBuf::from(home);
+            }
+        }
+        std::path::PathBuf::from(trimmed)
+    }
+
+    fn format_bytes(bytes: u64) -> String {
+        const GIGABYTE: f64 = 1024.0 * 1024.0 * 1024.0;
+        const MEGABYTE: f64 = 1024.0 * 1024.0;
+        if bytes as f64 >= GIGABYTE {
+            format!("{:.2} GB", bytes as f64 / GIGABYTE)
+        } else if bytes as f64 >= MEGABYTE {
+            format!("{:.1} MB", bytes as f64 / MEGABYTE)
+        } else {
+            format!("{} KB", bytes / 1024)
+        }
+    }
 
     fn validate_model_path(label: &str, path: &str) -> Result<(), String> {
         let path = path.trim();
-        if path.is_empty() || std::path::Path::new(path).is_file() {
+        if path.is_empty() || std::path::Path::new(path).is_file() || expand_tilde(path).is_file() {
             return Ok(());
         }
         Err(format!("{} model file was not found at '{}'. Choose an existing file or clear this field to disable that model.", label, path))
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+    pub struct ModelFileInfo {
+        pub file_name: String,
+        pub full_path: String,
+        pub size_bytes: u64,
+        pub size_human: String,
+        pub model_type: String,
+        pub is_active: bool,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+    pub struct RecommendedModelInfo {
+        pub key: String,
+        pub name: String,
+        pub file_name: String,
+        pub model_type: String,
+        pub size_human: String,
+        pub approx_bytes: u64,
+        pub description: String,
+        pub download_url: String,
+        pub huggingface_url: String,
+        pub is_downloaded: bool,
+        pub is_active: bool,
+        pub local_path: Option<String>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+    pub struct DetectedModelsInfo {
+        pub folder_path: String,
+        pub folder_exists: bool,
+        pub detected_files: Vec<ModelFileInfo>,
+        pub recommended_models: Vec<RecommendedModelInfo>,
+        pub active_whisper_path: String,
+        pub active_gemma_path: String,
+        pub active_qwen_path: String,
+        pub active_llm_model: String,
     }
 
     #[tauri::command]
@@ -313,6 +383,416 @@ mod commands {
         state.engine.run_text_refinement(&text, &agent_id)
             .map_err(|e| e.to_string())
     }
+
+    #[tauri::command]
+    pub fn scan_models_folder(
+        folder_path: Option<String>,
+        state: tauri::State<'_, AppState>,
+    ) -> Result<DetectedModelsInfo, String> {
+        let (folder_path_buf, folder_display) = {
+            let lock = state.settings.lock().unwrap();
+            let raw_path = match folder_path {
+                Some(p) if !p.trim().is_empty() => p,
+                _ => {
+                    if !lock.models_folder.trim().is_empty() {
+                        lock.models_folder.clone()
+                    } else if let Ok(home) = std::env::var("HOME") {
+                        format!("{}/Models", home)
+                    } else {
+                        "models".to_string()
+                    }
+                }
+            };
+            (expand_tilde(&raw_path), raw_path)
+        };
+
+        let folder_exists = folder_path_buf.is_dir();
+        let mut detected_files = Vec::new();
+
+        if folder_exists {
+            if let Ok(entries) = std::fs::read_dir(&folder_path_buf) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_file() {
+                        let file_name = path.file_name().and_then(|f| f.to_str()).unwrap_or("").to_string();
+                        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+                        if matches!(ext.as_str(), "bin" | "litertlm" | "gguf") {
+                            let size_bytes = entry.metadata().map(|m| m.len()).unwrap_or(0);
+                            let size_human = format_bytes(size_bytes);
+                            let model_type = if ext == "bin" {
+                                "whisper".to_string()
+                            } else if file_name.to_lowercase().contains("gemma") {
+                                "gemma".to_string()
+                            } else if file_name.to_lowercase().contains("qwen") {
+                                "qwen".to_string()
+                            } else {
+                                "other".to_string()
+                            };
+
+                            let full_path_str = path.to_string_lossy().to_string();
+                            let is_active = {
+                                let lock = state.settings.lock().unwrap();
+                                lock.whisper_model_path == full_path_str
+                                    || lock.gemma_model_path == full_path_str
+                                    || lock.qwen_model_path == full_path_str
+                            };
+
+                            detected_files.push(ModelFileInfo {
+                                file_name,
+                                full_path: full_path_str,
+                                size_bytes,
+                                size_human,
+                                model_type,
+                                is_active,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        detected_files.sort_by(|a, b| a.file_name.cmp(&b.file_name));
+
+        let (active_whisper, active_gemma, active_qwen, active_llm) = {
+            let lock = state.settings.lock().unwrap();
+            (
+                lock.whisper_model_path.clone(),
+                lock.gemma_model_path.clone(),
+                lock.qwen_model_path.clone(),
+                lock.active_llm_model.clone(),
+            )
+        };
+
+        let mut rec_models = vec![
+            RecommendedModelInfo {
+                key: "whisper_turbo".to_string(),
+                name: "Whisper Large v3 Turbo".to_string(),
+                file_name: "ggml-large-v3-turbo.bin".to_string(),
+                model_type: "whisper".to_string(),
+                size_human: "1.52 GB".to_string(),
+                approx_bytes: 1624555275,
+                description: "Найкраща точність і висока швидкість розпізнавання мови (Whisper STT).".to_string(),
+                download_url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin".to_string(),
+                huggingface_url: "https://huggingface.co/ggerganov/whisper.cpp/tree/main".to_string(),
+                is_downloaded: false,
+                is_active: false,
+                local_path: None,
+            },
+            RecommendedModelInfo {
+                key: "whisper_small".to_string(),
+                name: "Whisper Small".to_string(),
+                file_name: "ggml-small.bin".to_string(),
+                model_type: "whisper".to_string(),
+                size_human: "487 MB".to_string(),
+                approx_bytes: 487601967,
+                description: "Легка та швидка модель для пристроїв з обмеженою пам'яттю.".to_string(),
+                download_url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin".to_string(),
+                huggingface_url: "https://huggingface.co/ggerganov/whisper.cpp/tree/main".to_string(),
+                is_downloaded: false,
+                is_active: false,
+                local_path: None,
+            },
+            RecommendedModelInfo {
+                key: "qwen3_4b".to_string(),
+                name: "Qwen 3 4B Mixed-Int4".to_string(),
+                file_name: "qwen3_4b_mixed_int4.litertlm".to_string(),
+                model_type: "qwen".to_string(),
+                size_human: "2.48 GB".to_string(),
+                approx_bytes: 2659057664,
+                description: "Високоякісна багатомовна модель для редагування, структурування тексту та агентів.".to_string(),
+                download_url: "https://huggingface.co/litert-community/Qwen3-4B/resolve/main/qwen3_4b_mixed_int4.litertlm".to_string(),
+                huggingface_url: "https://huggingface.co/litert-community/Qwen3-4B".to_string(),
+                is_downloaded: false,
+                is_active: false,
+                local_path: None,
+            },
+            RecommendedModelInfo {
+                key: "gemma_e4b".to_string(),
+                name: "Gemma 4 E4B IT".to_string(),
+                file_name: "gemma-4-E4B-it.litertlm".to_string(),
+                model_type: "gemma".to_string(),
+                size_human: "3.41 GB".to_string(),
+                approx_bytes: 3659530240,
+                description: "Офіційна модель Google AI Edge LiteRT для розумного перефразування та промтів.".to_string(),
+                download_url: "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm".to_string(),
+                huggingface_url: "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm".to_string(),
+                is_downloaded: false,
+                is_active: false,
+                local_path: None,
+            },
+            RecommendedModelInfo {
+                key: "gemma_e2b".to_string(),
+                name: "Gemma 4 E2B IT (Легка)".to_string(),
+                file_name: "gemma-4-E2B-it.litertlm".to_string(),
+                model_type: "gemma".to_string(),
+                size_human: "2.41 GB".to_string(),
+                approx_bytes: 2588147712,
+                description: "Компактна та надшвидка модель Google AI Edge для Mac з 8-16 GB RAM.".to_string(),
+                download_url: "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm".to_string(),
+                huggingface_url: "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm".to_string(),
+                is_downloaded: false,
+                is_active: false,
+                local_path: None,
+            },
+        ];
+
+        for rec in &mut rec_models {
+            let candidate = folder_path_buf.join(&rec.file_name);
+            if candidate.exists() {
+                rec.is_downloaded = true;
+                let full = candidate.to_string_lossy().to_string();
+                rec.local_path = Some(full.clone());
+                rec.is_active = (rec.model_type == "whisper" && active_whisper == full)
+                    || (rec.model_type == "gemma" && active_gemma == full && active_llm == "gemma")
+                    || (rec.model_type == "qwen" && active_qwen == full && active_llm == "qwen");
+            }
+        }
+
+        Ok(DetectedModelsInfo {
+            folder_path: folder_display,
+            folder_exists,
+            detected_files,
+            recommended_models: rec_models,
+            active_whisper_path: active_whisper,
+            active_gemma_path: active_gemma,
+            active_qwen_path: active_qwen,
+            active_llm_model: active_llm,
+        })
+    }
+
+    #[tauri::command]
+    pub fn set_active_model_path(
+        model_type: String,
+        file_path: String,
+        state: tauri::State<'_, AppState>,
+        app: tauri::AppHandle,
+    ) -> Result<AppSettings, String> {
+        let mut settings = {
+            let lock = state.settings.lock().unwrap();
+            (**lock).clone()
+        };
+
+        match model_type.to_lowercase().as_str() {
+            "whisper" => {
+                settings.whisper_model_path = file_path;
+            }
+            "gemma" => {
+                settings.gemma_model_path = file_path;
+                settings.active_llm_model = "gemma".to_string();
+            }
+            "qwen" => {
+                settings.qwen_model_path = file_path;
+                settings.active_llm_model = "qwen".to_string();
+            }
+            other => return Err(format!("Unknown model type: {}", other)),
+        }
+
+        save_settings(settings.clone(), state, app)?;
+        Ok(settings)
+    }
+
+    #[tauri::command]
+    pub async fn download_model(
+        model_key: String,
+        target_folder: Option<String>,
+        app: tauri::AppHandle,
+        state: tauri::State<'_, AppState>,
+    ) -> Result<(), String> {
+        let (file_name, url, approx_bytes) = match model_key.as_str() {
+            "whisper_turbo" => (
+                "ggml-large-v3-turbo.bin",
+                "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin",
+                1624555275u64,
+            ),
+            "whisper_small" => (
+                "ggml-small.bin",
+                "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin",
+                487601967u64,
+            ),
+            "qwen3_4b" => (
+                "qwen3_4b_mixed_int4.litertlm",
+                "https://huggingface.co/litert-community/Qwen3-4B/resolve/main/qwen3_4b_mixed_int4.litertlm",
+                2659057664u64,
+            ),
+            "gemma_e4b" => (
+                "gemma-4-E4B-it.litertlm",
+                "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm",
+                3659530240u64,
+            ),
+            "gemma_e2b" => (
+                "gemma-4-E2B-it.litertlm",
+                "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm",
+                2588147712u64,
+            ),
+            other => return Err(format!("Unknown model key: {}", other)),
+        };
+
+        let folder = {
+            let lock = state.settings.lock().unwrap();
+            let raw = match target_folder {
+                Some(f) if !f.trim().is_empty() => f,
+                _ => {
+                    if !lock.models_folder.trim().is_empty() {
+                        lock.models_folder.clone()
+                    } else if let Ok(home) = std::env::var("HOME") {
+                        format!("{}/Models", home)
+                    } else {
+                        "models".to_string()
+                    }
+                }
+            };
+            expand_tilde(&raw)
+        };
+
+        if let Err(e) = std::fs::create_dir_all(&folder) {
+            return Err(format!("Failed to create models folder: {:?}", e));
+        }
+
+        let dest_path = folder.join(file_name);
+        let temp_path = folder.join(format!("{}.download", file_name));
+
+        {
+            let active = ACTIVE_DOWNLOADS.lock().unwrap();
+            if active.contains_key(&model_key) {
+                return Err("Download for this model is already running".to_string());
+            }
+        }
+
+        let model_key_clone = model_key.clone();
+        let app_clone = app.clone();
+
+        tokio::spawn(async move {
+            let mut cmd = tokio::process::Command::new("curl");
+            cmd.arg("-L")
+                .arg("-C")
+                .arg("-")
+                .arg("--fail")
+                .arg("--silent")
+                .arg("--show-error")
+                .arg("-o")
+                .arg(&temp_path)
+                .arg(url);
+
+            let mut child = match cmd.spawn() {
+                Ok(c) => c,
+                Err(e) => {
+                    let _ = app_clone.emit(
+                        "model-download-progress",
+                        serde_json::json!({
+                            "model_key": model_key_clone,
+                            "status": "error",
+                            "error": format!("Failed to run curl: {:?}", e),
+                        }),
+                    );
+                    return;
+                }
+            };
+
+            if let Some(pid) = child.id() {
+                ACTIVE_DOWNLOADS.lock().unwrap().insert(model_key_clone.clone(), pid);
+            }
+
+            let start_time = std::time::Instant::now();
+
+            loop {
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+                match child.try_wait() {
+                    Ok(Some(status)) => {
+                        ACTIVE_DOWNLOADS.lock().unwrap().remove(&model_key_clone);
+                        if status.success() {
+                            let _ = std::fs::rename(&temp_path, &dest_path);
+                            let _ = app_clone.emit(
+                                "model-download-progress",
+                                serde_json::json!({
+                                    "model_key": model_key_clone,
+                                    "status": "completed",
+                                    "percent": 100.0,
+                                    "downloaded_bytes": approx_bytes,
+                                    "total_bytes": approx_bytes,
+                                    "file_path": dest_path.to_string_lossy(),
+                                }),
+                            );
+                        } else {
+                            let _ = app_clone.emit(
+                                "model-download-progress",
+                                serde_json::json!({
+                                    "model_key": model_key_clone,
+                                    "status": "error",
+                                    "error": format!("Download failed (code: {:?})", status.code()),
+                                }),
+                            );
+                        }
+                        break;
+                    }
+                    Ok(None) => {
+                        let current_bytes = std::fs::metadata(&temp_path).map(|m| m.len()).unwrap_or(0);
+                        let percent = if approx_bytes > 0 {
+                            ((current_bytes as f64 / approx_bytes as f64) * 100.0).min(99.9)
+                        } else {
+                            0.0
+                        };
+
+                        let elapsed = start_time.elapsed().as_secs_f64();
+                        let speed_mbps = if elapsed > 0.0 {
+                            (current_bytes as f64 / (1024.0 * 1024.0)) / elapsed
+                        } else {
+                            0.0
+                        };
+
+                        let _ = app_clone.emit(
+                            "model-download-progress",
+                            serde_json::json!({
+                                "model_key": model_key_clone,
+                                "status": "downloading",
+                                "percent": (percent * 10.0).round() / 10.0,
+                                "downloaded_bytes": current_bytes,
+                                "total_bytes": approx_bytes,
+                                "speed_mbps": (speed_mbps * 10.0).round() / 10.0,
+                            }),
+                        );
+                    }
+                    Err(e) => {
+                        ACTIVE_DOWNLOADS.lock().unwrap().remove(&model_key_clone);
+                        let _ = app_clone.emit(
+                            "model-download-progress",
+                            serde_json::json!({
+                                "model_key": model_key_clone,
+                                "status": "error",
+                                "error": format!("Error monitoring curl: {:?}", e),
+                            }),
+                        );
+                        break;
+                    }
+                }
+            }
+        });
+
+        Ok(())
+    }
+
+    #[tauri::command]
+    pub fn cancel_model_download(
+        model_key: String,
+        app: tauri::AppHandle,
+    ) -> Result<(), String> {
+        let mut active = ACTIVE_DOWNLOADS.lock().unwrap();
+        if let Some(pid) = active.remove(&model_key) {
+            let _ = std::process::Command::new("kill")
+                .arg(pid.to_string())
+                .status();
+            let _ = app.emit(
+                "model-download-progress",
+                serde_json::json!({
+                    "model_key": model_key,
+                    "status": "cancelled",
+                }),
+            );
+            Ok(())
+        } else {
+            Err("No active download found for this model".to_string())
+        }
+    }
 }
 
 
@@ -453,11 +933,17 @@ fn spawn_mouse_listener(
 fn run_os_refinement(engine: Arc<VoiceAssistantEngine>, agent_id: String) {
     tauri::async_runtime::spawn(async move {
         engine.log(format!("[global-refine] Starting OS-wide refinement for agent '{}'...", agent_id));
+
+        #[cfg(target_os = "macos")]
+        if !os_integration::is_accessibility_trusted() {
+            engine.log("⚠️ Accessibility permission is not granted! macOS will block synthetic Cmd+C / Cmd+V keystrokes. Please allow KleKit in System Settings → Privacy & Security → Accessibility.");
+        }
+
         if let Err(e) = os_integration::simulate_copy() {
             engine.log(format!("❌ Failed to simulate copy: {:?}", e));
             return;
         }
-        tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         
         let clipboard_text = match arboard::Clipboard::new() {
             Ok(mut cb) => cb.get_text().unwrap_or_default(),
@@ -480,9 +966,7 @@ fn run_os_refinement(engine: Arc<VoiceAssistantEngine>, agent_id: String) {
                 if enable_sounds {
                     os_integration::play_sound("complete");
                 }
-                if let Err(e) = os_integration::inject_text(&refined) {
-                    engine.log(format!("❌ Failed to inject refined text: {:?}", e));
-                }
+                engine.trigger_paste(&refined);
             }
             Err(e) => {
                 engine.log(format!("❌ Refinement failed: {:?}", e));
@@ -619,7 +1103,11 @@ pub fn run() {
             commands::clear_history,
             commands::get_preset_blueprints,
             commands::open_url,
-            commands::refine_text
+            commands::refine_text,
+            commands::scan_models_folder,
+            commands::set_active_model_path,
+            commands::download_model,
+            commands::cancel_model_download
         ])
         .setup(move |app| {
             // Configure logging for debugging
@@ -825,15 +1313,15 @@ pub fn run() {
             // 8. Bind paste/type trigger to execute simulated typing strictly on the main thread
             let app_handle_paste = app.handle().clone();
             engine_toggle.set_paste_callback(move |refined_text| {
-               let app_h = app_handle_paste.clone();
-                let _ = app_h.run_on_main_thread(move || {
-                    // Remove the entire block with focusTestArea and window focus
-                    // Delay to allow OS to return focus to target application
-                    std::thread::sleep(std::time::Duration::from_millis(300));
-                    
-                    if let Err(e) = os_integration::inject_text(&refined_text) {
-                        eprintln!("❌ inject_text error: {:?}", e);
-                    }
+                let app_h = app_handle_paste.clone();
+                tauri::async_runtime::spawn(async move {
+                    // Non-blocking delay to allow OS window server to return/settle focus on the target application
+                    tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+                    let _ = app_h.run_on_main_thread(move || {
+                        if let Err(e) = os_integration::inject_text(&refined_text) {
+                            eprintln!("❌ inject_text error: {:?}", e);
+                        }
+                    });
                 });
             });
 

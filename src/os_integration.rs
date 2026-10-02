@@ -24,63 +24,124 @@ use anyhow::Result;
 use core_graphics::event::{CGEvent, CGEventFlags, CGEventTapLocation};
 use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 
-/// Virtual key-code for the 'V' key on a US-layout keyboard (layout-independent
-/// on macOS — CGEventCreateKeyboardEvent uses hardware scan-codes, not characters).
-const VKEY_V: u16 = 9;
+/// Virtual key codes on macOS (hardware scan-codes, layout-independent).
+const VKEY_CMD: u16 = 55; // kVK_Command
+const VKEY_C: u16 = 8;   // kVK_ANSI_C
+const VKEY_V: u16 = 9;   // kVK_ANSI_V
+
+#[cfg(target_os = "macos")]
+#[link(name = "ApplicationServices", kind = "framework")]
+extern "C" {
+    fn AXIsProcessTrusted() -> bool;
+}
+
+/// Checks whether the current process has been granted macOS Accessibility permissions.
+pub fn is_accessibility_trusted() -> bool {
+    #[cfg(target_os = "macos")]
+    unsafe {
+        AXIsProcessTrusted()
+    }
+    #[cfg(not(target_os = "macos"))]
+    true
+}
 
 /// Injects `text` into the currently focused application:
 ///   1. Writes the text to the macOS General Pasteboard.
-///   2. Synthesizes a Cmd+V KeyDown + KeyUp pair via CGEventPost → HID tap.
+///   2. Synthesizes a full Cmd+V key-press sequence (Cmd Down -> V Down -> V Up -> Cmd Up).
 ///
 /// Must be called from the **main thread** (Tauri's `run_on_main_thread` callback)
 /// so CGEventPost has access to the active window-server session.
 #[cfg(target_os = "macos")]
 pub fn inject_text(text: &str) -> Result<()> {
+    if !is_accessibility_trusted() {
+        eprintln!("⚠️ Accessibility permission not granted! Keystroke injection may be blocked by macOS.");
+    }
+
     // Write the text to the macOS General Pasteboard via arboard (native, no subprocess)
     let mut cb = arboard::Clipboard::new()
         .map_err(|e| anyhow::anyhow!("Failed to initialize arboard clipboard: {:?}", e))?;
     cb.set_text(text.to_string())
         .map_err(|e| anyhow::anyhow!("Failed to copy text to clipboard: {:?}", e))?;
 
-    // Short delay to ensure system pasteboard registers the write
+    // Delay to ensure system pasteboard registers the write
     std::thread::sleep(std::time::Duration::from_millis(150));
 
-    // Cmd+V simulation using CombinedSessionState (more reliable for targeting other apps)
+    // Cmd+V simulation using CombinedSessionState
     let source = CGEventSource::new(CGEventSourceStateID::CombinedSessionState)
         .map_err(|_| anyhow::anyhow!("Failed to create CGEventSource"))?;
 
-    let key_down = CGEvent::new_keyboard_event(source.clone(), VKEY_V, true)
-        .map_err(|_| anyhow::anyhow!("Failed to create CGEvent KeyDown"))?;
-    key_down.set_flags(CGEventFlags::CGEventFlagCommand);
-    key_down.post(CGEventTapLocation::HID);
+    // 1. Command Down
+    let cmd_down = CGEvent::new_keyboard_event(source.clone(), VKEY_CMD, true)
+        .map_err(|_| anyhow::anyhow!("Failed to create CGEvent Cmd Down"))?;
+    cmd_down.set_flags(CGEventFlags::CGEventFlagCommand);
+    cmd_down.post(CGEventTapLocation::HID);
+
+    std::thread::sleep(std::time::Duration::from_millis(25));
+
+    // 2. V Down
+    let v_down = CGEvent::new_keyboard_event(source.clone(), VKEY_V, true)
+        .map_err(|_| anyhow::anyhow!("Failed to create CGEvent V Down"))?;
+    v_down.set_flags(CGEventFlags::CGEventFlagCommand);
+    v_down.post(CGEventTapLocation::HID);
 
     std::thread::sleep(std::time::Duration::from_millis(50));
 
-    let key_up = CGEvent::new_keyboard_event(source, VKEY_V, false)
-        .map_err(|_| anyhow::anyhow!("Failed to create CGEvent KeyUp"))?;
-    key_up.set_flags(CGEventFlags::CGEventFlagCommand);
-    key_up.post(CGEventTapLocation::HID);
+    // 3. V Up
+    let v_up = CGEvent::new_keyboard_event(source.clone(), VKEY_V, false)
+        .map_err(|_| anyhow::anyhow!("Failed to create CGEvent V Up"))?;
+    v_up.set_flags(CGEventFlags::CGEventFlagCommand);
+    v_up.post(CGEventTapLocation::HID);
+
+    std::thread::sleep(std::time::Duration::from_millis(25));
+
+    // 4. Command Up
+    let cmd_up = CGEvent::new_keyboard_event(source, VKEY_CMD, false)
+        .map_err(|_| anyhow::anyhow!("Failed to create CGEvent Cmd Up"))?;
+    cmd_up.set_flags(CGEventFlags::empty());
+    cmd_up.post(CGEventTapLocation::HID);
 
     Ok(())
 }
 
-/// Synthesizes a Cmd+C KeyDown + KeyUp pair to copy selected text to clipboard.
+/// Synthesizes a full Cmd+C key-press sequence to copy selected text to clipboard.
 #[cfg(target_os = "macos")]
 pub fn simulate_copy() -> Result<()> {
+    if !is_accessibility_trusted() {
+        eprintln!("⚠️ Accessibility permission not granted! Keystroke copy may be blocked by macOS.");
+    }
+
     let source = CGEventSource::new(CGEventSourceStateID::CombinedSessionState)
         .map_err(|_| anyhow::anyhow!("Failed to create CGEventSource"))?;
 
-    let key_down = CGEvent::new_keyboard_event(source.clone(), 8, true)
-        .map_err(|_| anyhow::anyhow!("Failed to create CGEvent KeyDown"))?;
-    key_down.set_flags(CGEventFlags::CGEventFlagCommand);
-    key_down.post(CGEventTapLocation::HID);
+    // 1. Command Down
+    let cmd_down = CGEvent::new_keyboard_event(source.clone(), VKEY_CMD, true)
+        .map_err(|_| anyhow::anyhow!("Failed to create CGEvent Cmd Down"))?;
+    cmd_down.set_flags(CGEventFlags::CGEventFlagCommand);
+    cmd_down.post(CGEventTapLocation::HID);
+
+    std::thread::sleep(std::time::Duration::from_millis(25));
+
+    // 2. C Down
+    let c_down = CGEvent::new_keyboard_event(source.clone(), VKEY_C, true)
+        .map_err(|_| anyhow::anyhow!("Failed to create CGEvent C Down"))?;
+    c_down.set_flags(CGEventFlags::CGEventFlagCommand);
+    c_down.post(CGEventTapLocation::HID);
 
     std::thread::sleep(std::time::Duration::from_millis(50));
 
-    let key_up = CGEvent::new_keyboard_event(source, 8, false)
-        .map_err(|_| anyhow::anyhow!("Failed to create CGEvent KeyUp"))?;
-    key_up.set_flags(CGEventFlags::CGEventFlagCommand);
-    key_up.post(CGEventTapLocation::HID);
+    // 3. C Up
+    let c_up = CGEvent::new_keyboard_event(source.clone(), VKEY_C, false)
+        .map_err(|_| anyhow::anyhow!("Failed to create CGEvent C Up"))?;
+    c_up.set_flags(CGEventFlags::CGEventFlagCommand);
+    c_up.post(CGEventTapLocation::HID);
+
+    std::thread::sleep(std::time::Duration::from_millis(25));
+
+    // 4. Command Up
+    let cmd_up = CGEvent::new_keyboard_event(source, VKEY_CMD, false)
+        .map_err(|_| anyhow::anyhow!("Failed to create CGEvent Cmd Up"))?;
+    cmd_up.set_flags(CGEventFlags::empty());
+    cmd_up.post(CGEventTapLocation::HID);
 
     Ok(())
 }

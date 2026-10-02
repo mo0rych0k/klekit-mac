@@ -91,6 +91,47 @@ impl VoiceAssistantEngine {
         *self.on_paste.lock().unwrap() = Some(Arc::new(cb));
     }
 
+    /// Handles pasting/copying refined text based on user settings and registered callbacks.
+    pub fn trigger_paste(&self, text: &str) {
+        let settings_snapshot = {
+            let lock = self.settings.lock().unwrap();
+            Arc::clone(&*lock)
+        };
+
+        let auto_paste = settings_snapshot.enable_auto_paste;
+        if auto_paste {
+            let cb_opt = {
+                let guard = self.on_paste.lock().unwrap();
+                guard.clone()
+            };
+
+            if let Some(cb) = cb_opt {
+                self.log("⌨️ Launching input emulation on main thread...");
+                cb(text.to_string());
+            } else {
+                self.log("⌨️ Text input emulation...");
+                if let Err(e) = os_integration::inject_text(text) {
+                    self.log(format!("❌ Input emulation error: {:?}", e));
+                }
+            }
+        } else {
+            // Copy to clipboard fallback without keyboard simulation
+            match arboard::Clipboard::new() {
+                Ok(mut clipboard) => {
+                    self.log("✏️ Writing refined text to clipboard...");
+                    if let Err(e) = clipboard.set_text(text.to_string()) {
+                        self.log(format!("❌ Clipboard write error: {:?}", e));
+                    } else {
+                        self.log("✨ Text successfully saved to clipboard! Paste it manually (Cmd+V).");
+                    }
+                }
+                Err(e) => {
+                    self.log(format!("❌ Failed to initialize clipboard manager: {:?}", e));
+                }
+            }
+        }
+    }
+
     /// Sets a callback that triggers when the engine logs info.
     pub fn set_log_callback(&self, cb: impl Fn(String) + Send + Sync + 'static) {
         *self.on_log.lock().unwrap() = Some(Box::new(cb));
@@ -494,38 +535,7 @@ impl VoiceAssistantEngine {
                 self.log(format!("✨ Refined: \"{}\"", refined_text));
                 self.log("-----------------------------------");
 
-                let auto_paste = settings_snapshot.enable_auto_paste;
-                if auto_paste {
-                    let cb_opt = {
-                        let guard = self.on_paste.lock().unwrap();
-                        guard.clone()
-                    };
-
-                    if let Some(cb) = cb_opt {
-                        self.log("⌨️ Launching input emulation on main thread...");
-                        cb(refined_text.clone());
-                    } else {
-                        self.log("⌨️ Text input emulation...");
-                        if let Err(e) = os_integration::inject_text(&refined_text) {
-                            self.log(format!("❌ Input emulation error: {:?}", e));
-                        }
-                    }
-                } else {
-                    // Copy to clipboard fallback without keyboard simulation
-                    match arboard::Clipboard::new() {
-                        Ok(mut clipboard) => {
-                            self.log("✏️ Writing refined text to clipboard...");
-                            if let Err(e) = clipboard.set_text(refined_text.clone()) {
-                                self.log(format!("❌ Clipboard write error: {:?}", e));
-                            } else {
-                                self.log("✨ Text successfully saved to clipboard! Paste it manually (Cmd+V).");
-                            }
-                        }
-                        Err(e) => {
-                            self.log(format!("❌ Failed to initialize clipboard manager: {:?}", e));
-                        }
-                    }
-                }
+                self.trigger_paste(&refined_text);
 
                 tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
             }

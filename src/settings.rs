@@ -49,6 +49,8 @@ pub struct AppSettings {
     pub qwen_model_path: String,
     #[serde(default = "default_active_llm_model")]
     pub active_llm_model: String,
+    #[serde(default)]
+    pub models_folder: String,
 }
 
 fn default_true() -> bool {
@@ -110,6 +112,7 @@ impl Default for AppSettings {
             gemma_model_path: String::new(),
             qwen_model_path: String::new(),
             active_llm_model: default_active_llm_model(),
+            models_folder: String::new(),
         }
     }
 }
@@ -211,6 +214,7 @@ mod tests {
         assert!(settings.whisper_model_path.is_empty());
         assert!(settings.gemma_model_path.is_empty());
         assert!(settings.qwen_model_path.is_empty());
+        assert!(settings.models_folder.is_empty());
         assert_eq!(settings.active_llm_model, "gemma");
     }
 

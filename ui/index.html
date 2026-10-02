@@ -838,6 +838,162 @@
             }
         }
 
+        /* ─── Models Tab Styles ─── */
+        .models-container {
+            overflow-y: auto;
+            scrollbar-width: thin;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding-right: 4px;
+        }
+
+        .models-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 18px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .models-card-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent-purple);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .models-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 14px;
+        }
+
+        .model-item {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .model-item:hover {
+            border-color: var(--border-hover);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        }
+
+        .model-item-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .model-item-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .model-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .model-badge.whisper {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .model-badge.llm {
+            background: rgba(139, 92, 246, 0.15);
+            color: var(--accent-purple);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .model-badge.active {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid #10b981;
+        }
+
+        .model-item-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        .model-item-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: auto;
+            padding-top: 6px;
+            flex-wrap: wrap;
+        }
+
+        .model-progress-box {
+            background: rgba(139, 92, 246, 0.08);
+            border: 1px solid var(--accent-purple-border);
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .model-progress-track {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-card);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .model-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #8b5cf6, #06b6d4);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .detected-file-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            gap: 12px;
+            transition: border-color 0.2s;
+        }
+
+        .detected-file-row:hover {
+            border-color: var(--border-hover);
+        }
+
         #agent-hotkey-input {
             width: 100%;
             background-color: var(--bg-input);
@@ -1362,6 +1518,9 @@
                 <button class="nav-item active" onclick="switchTab('agents', this)">
                     <span>👥</span> <span data-i18n="nav_agents">Agents Config</span>
                 </button>
+                <button class="nav-item" onclick="switchTab('models', this)">
+                    <span>🧠</span> <span data-i18n="nav_models">Local Models</span>
+                </button>
                 <button class="nav-item" onclick="switchTab('history', this)">
                     <span>📜</span> <span data-i18n="nav_history">History</span>
                 </button>
@@ -1434,6 +1593,64 @@
 
                     <div class="agent-detail-form" id="agent-detail-form-container">
                         <!-- Loaded agent detail edit form -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Local Models Tab -->
+            <div id="tab-models" class="tab-pane">
+                <div class="pane-header">
+                    <div>
+                        <h3 data-i18n="models_dashboard_title">Local Models & Weights</h3>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px;" data-i18n="models_dashboard_subtitle">
+                            Manage on-device Whisper speech recognition and LiteRT LLM models (0 MB Idle RAM).
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" id="models-scan-btn" onclick="scanModelsFolder()">
+                        🔄 <span data-i18n="models_scan_btn">Scan Folder</span>
+                    </button>
+                </div>
+
+                <div class="models-container">
+                    <!-- Card 1: Directory Selection -->
+                    <div class="models-card">
+                        <div class="models-card-title">
+                            <span>📁 <span data-i18n="models_folder_label">Models Folder Location</span></span>
+                            <span id="models-folder-status-badge" style="font-size: 11px; font-weight: 600; color: var(--text-secondary);"></span>
+                        </div>
+                        <p style="margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.45;" data-i18n="models_folder_desc">
+                            All downloaded AI models (.bin, .litertlm) are stored locally in this folder. KleKit stays tiny (~13.5 MB) and never bundles heavy weights into the application binary.
+                        </p>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="text" id="models-folder-input" placeholder="/Users/you/Models"
+                                onchange="onModelsFolderInputChanged(this.value)"
+                                style="flex-grow: 1; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; color: var(--text-primary); font-size: 13px;">
+                            <button type="button" class="btn btn-secondary" onclick="chooseModelsDirectory()"
+                                style="padding: 10px 16px; white-space: nowrap;" data-i18n="models_choose_folder_btn">
+                                📂 Choose Folder…
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: Detected Models in Folder -->
+                    <div class="models-card">
+                        <div class="models-card-title">
+                            <span>🔍 <span data-i18n="models_detected_title">Detected Models in Folder</span></span>
+                            <span id="models-detected-count" style="font-size: 11px; color: var(--accent-purple); font-weight: 700;"></span>
+                        </div>
+                        <div id="detected-models-container" style="display: flex; flex-direction: column; gap: 8px;">
+                            <div style="color: var(--text-secondary); font-size: 12px; padding: 12px; text-align: center;" data-i18n="models_scanning_hint">Scanning folder...</div>
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Recommended Models (Download & Hugging Face) -->
+                    <div class="models-card">
+                        <div class="models-card-title">
+                            <span>✨ <span data-i18n="models_recommended_title">Recommended Models (Download or External Link)</span></span>
+                        </div>
+                        <div class="models-grid" id="recommended-models-grid">
+                            <!-- Populated dynamically -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1793,6 +2010,11 @@
             if (historyTab && historyTab.classList.contains('active')) {
                 loadHistory(false);
             }
+
+            // Update models view if loaded
+            if (currentModelsData) {
+                renderModelsView(currentModelsData);
+            }
         }
 
         function changeUiLanguage(lang) {
@@ -1989,16 +2211,302 @@
                 element.classList.add('active');
             } else {
                 const navs = document.querySelectorAll('.nav-item');
-                if (tabId === 'agents') navs[0].classList.add('active');
-                else if (tabId === 'history') navs[1].classList.add('active');
-                else if (tabId === 'settings') navs[2].classList.add('active');
+                if (tabId === 'agents') navs[0]?.classList.add('active');
+                else if (tabId === 'models') navs[1]?.classList.add('active');
+                else if (tabId === 'history') navs[2]?.classList.add('active');
+                else if (tabId === 'settings') navs[3]?.classList.add('active');
             }
 
             document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
-            document.getElementById(`tab-${tabId}`).classList.add('active');
+            const targetPane = document.getElementById(`tab-${tabId}`);
+            if (targetPane) targetPane.classList.add('active');
 
             if (tabId === 'history') {
                 loadHistory(false);
+            } else if (tabId === 'models') {
+                loadModelsTab();
+            }
+        }
+
+        // ─── Local Models Tab Logic ───
+        let currentModelsData = null;
+        let activeModelDownloads = {}; // key -> { percent, speed_mbps, downloaded_bytes, total_bytes }
+
+        async function loadModelsTab() {
+            const folderInput = document.getElementById('models-folder-input');
+            let folder = folderInput ? folderInput.value.trim() : '';
+            if (!folder && localSettings && localSettings.models_folder) {
+                folder = localSettings.models_folder;
+            }
+            await scanModelsFolder(folder);
+        }
+
+        async function scanModelsFolder(customPath) {
+            const scanBtn = document.getElementById('models-scan-btn');
+            if (scanBtn) scanBtn.disabled = true;
+            try {
+                const folderInput = document.getElementById('models-folder-input');
+                const pathToSend = customPath !== undefined ? customPath : (folderInput ? folderInput.value.trim() : null);
+                const res = await invokeCommand('scan_models_folder', { folderPath: pathToSend || null });
+                if (res) {
+                    currentModelsData = res;
+                    renderModelsView(res);
+                }
+            } catch (err) {
+                console.error('Failed to scan models folder:', err);
+                const container = document.getElementById('detected-models-container');
+                if (container) {
+                    container.innerHTML = `<div style="color: var(--accent-red); font-size: 13px; padding: 12px;">❌ Error: ${escapeHtml(String(err))}</div>`;
+                }
+            } finally {
+                if (scanBtn) scanBtn.disabled = false;
+            }
+        }
+
+        async function chooseModelsDirectory() {
+            const dialog = window.__TAURI__ && window.__TAURI__.dialog;
+            if (!dialog || !dialog.open) {
+                alert('The system directory picker is unavailable. Enter the path manually.');
+                return;
+            }
+            const selected = await dialog.open({
+                multiple: false,
+                directory: true,
+                title: 'Select Models Folder'
+            });
+            if (typeof selected === 'string' && selected.trim()) {
+                const folderInput = document.getElementById('models-folder-input');
+                if (folderInput) folderInput.value = selected;
+                if (localSettings) {
+                    localSettings.models_folder = selected;
+                    autoSaveSettings();
+                }
+                await scanModelsFolder(selected);
+            }
+        }
+
+        async function onModelsFolderInputChanged(val) {
+            if (localSettings) {
+                localSettings.models_folder = val.trim();
+                autoSaveSettings();
+            }
+            await scanModelsFolder(val.trim());
+        }
+
+        async function activateModel(modelType, filePath) {
+            try {
+                const updatedSettings = await invokeCommand('set_active_model_path', {
+                    modelType: modelType,
+                    filePath: filePath
+                });
+                if (updatedSettings) {
+                    localSettings = updatedSettings;
+                    if (modelType === 'whisper') {
+                        const wInput = document.getElementById('global-whisper-model-path');
+                        if (wInput) wInput.value = filePath;
+                    } else if (modelType === 'gemma') {
+                        const gInput = document.getElementById('global-gemma-model-path');
+                        if (gInput) gInput.value = filePath;
+                        const llmSelect = document.getElementById('global-active-llm-model');
+                        if (llmSelect) llmSelect.value = 'gemma';
+                    } else if (modelType === 'qwen') {
+                        const qInput = document.getElementById('global-qwen-model-path');
+                        if (qInput) qInput.value = filePath;
+                        const llmSelect = document.getElementById('global-active-llm-model');
+                        if (llmSelect) llmSelect.value = 'qwen';
+                    }
+                }
+                await scanModelsFolder();
+            } catch (err) {
+                alert('Failed to activate model: ' + err);
+            }
+        }
+
+        async function downloadModel(modelKey) {
+            const folderInput = document.getElementById('models-folder-input');
+            const targetFolder = folderInput ? folderInput.value.trim() : '';
+            try {
+                activeModelDownloads[modelKey] = { percent: 0, status: 'downloading', downloaded_bytes: 0, total_bytes: 0 };
+                renderRecommendedModels(currentModelsData ? currentModelsData.recommended_models : []);
+                await invokeCommand('download_model', {
+                    modelKey: modelKey,
+                    targetFolder: targetFolder || null
+                });
+            } catch (err) {
+                delete activeModelDownloads[modelKey];
+                alert('Download error: ' + err);
+                renderRecommendedModels(currentModelsData ? currentModelsData.recommended_models : []);
+            }
+        }
+
+        async function cancelModelDownload(modelKey) {
+            try {
+                await invokeCommand('cancel_model_download', { modelKey: modelKey });
+            } catch (err) {
+                console.warn('Cancel error:', err);
+            }
+            delete activeModelDownloads[modelKey];
+            renderRecommendedModels(currentModelsData ? currentModelsData.recommended_models : []);
+        }
+
+        function openExternalUrl(url) {
+            if (!url) return;
+            if (window.__TAURI__ && window.__TAURI__.core) {
+                window.__TAURI__.core.invoke('open_url', { url: url }).catch(function(err) {
+                    console.warn('Tauri open_url failed, falling back to window.open:', err);
+                    window.open(url, '_blank');
+                });
+            } else {
+                window.open(url, '_blank');
+            }
+        }
+
+        function renderModelsView(data) {
+            const folderInput = document.getElementById('models-folder-input');
+            if (folderInput && document.activeElement !== folderInput) {
+                folderInput.value = data.folder_path || '';
+            }
+
+            const statusBadge = document.getElementById('models-folder-status-badge');
+            if (statusBadge) {
+                if (data.folder_exists) {
+                    statusBadge.innerHTML = `<span style="color: var(--accent-green);">🟢 ${escapeHtml(t('models_folder_exists'))}</span>`;
+                } else {
+                    statusBadge.innerHTML = `<span style="color: var(--accent-warning);">⚠️ ${escapeHtml(t('models_folder_not_exists'))}</span>`;
+                }
+            }
+
+            const countBadge = document.getElementById('models-detected-count');
+            if (countBadge) {
+                countBadge.textContent = `${data.detected_files.length} ${t('models_found_count')}`;
+            }
+
+            const container = document.getElementById('detected-models-container');
+            if (container) {
+                if (data.detected_files.length === 0) {
+                    container.innerHTML = `
+                        <div style="color: var(--text-secondary); font-size: 12px; padding: 16px; text-align: center; background: var(--bg-input); border-radius: 8px; border: 1px dashed var(--border-color);">
+                            📦 ${escapeHtml(t('models_no_detected'))}
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = data.detected_files.map(file => {
+                        const isWhisper = file.model_type === 'whisper';
+                        const icon = isWhisper ? '🎙️' : '🧠';
+                        const typeBadge = isWhisper
+                            ? `<span class="model-badge whisper">Whisper STT</span>`
+                            : `<span class="model-badge llm">${file.model_type.toUpperCase()}</span>`;
+                        const activeBadge = file.is_active
+                            ? `<span class="model-badge active">🟢 ${escapeHtml(t('models_active_badge'))}</span>`
+                            : `<button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="activateModel('${file.model_type}', '${escapeJsString(file.full_path)}')">${escapeHtml(t('models_set_active_btn'))}</button>`;
+
+                        return `
+                            <div class="detected-file-row">
+                                <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex-grow: 1;">
+                                    <span style="font-size: 18px;">${icon}</span>
+                                    <div style="min-width: 0;">
+                                        <div style="font-weight: 600; font-size: 13px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                            ${escapeHtml(file.file_name)}
+                                        </div>
+                                        <div style="font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                            ${escapeHtml(file.full_path)}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
+                                    <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">${file.size_human}</span>
+                                    ${typeBadge}
+                                    ${activeBadge}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+
+            renderRecommendedModels(data.recommended_models || []);
+        }
+
+        function renderRecommendedModels(models) {
+            const grid = document.getElementById('recommended-models-grid');
+            if (!grid) return;
+
+            grid.innerHTML = models.map(rec => {
+                const isDownloading = !!activeModelDownloads[rec.key];
+                const dlInfo = activeModelDownloads[rec.key] || {};
+                const isWhisper = rec.model_type === 'whisper';
+                const icon = isWhisper ? '🎙️' : '🧠';
+                const typeBadge = isWhisper
+                    ? `<span class="model-badge whisper">Whisper STT</span>`
+                    : `<span class="model-badge llm">${rec.model_type.toUpperCase()}</span>`;
+                const desc = t('model_desc_' + rec.key) || rec.description;
+
+                let actionHtml = '';
+                if (isDownloading) {
+                    const percent = dlInfo.percent || 0;
+                    const speed = dlInfo.speed_mbps ? `${dlInfo.speed_mbps} MB/s` : '';
+                    actionHtml = `
+                        <div class="model-progress-box" style="width: 100%;">
+                            <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; color: var(--text-secondary);">
+                                <span>⏳ ${escapeHtml(t('models_downloading_btn'))} ${speed}</span>
+                                <span>${percent}%</span>
+                            </div>
+                            <div class="model-progress-track">
+                                <div class="model-progress-fill" id="progress-bar-${rec.key}" style="width: ${percent}%;"></div>
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
+                                <button class="btn btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="cancelModelDownload('${rec.key}')">${escapeHtml(t('models_cancel_btn'))}</button>
+                            </div>
+                        </div>
+                    `;
+                } else if (rec.is_downloaded) {
+                    const activeBadge = rec.is_active
+                        ? `<span class="model-badge active">🟢 ${escapeHtml(t('models_active_badge'))}</span>`
+                        : `<button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="activateModel('${rec.model_type}', '${escapeJsString(rec.local_path || '')}')">${escapeHtml(t('models_set_active_btn'))}</button>`;
+                    actionHtml = `
+                        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                            <span style="font-size: 12px; font-weight: 600; color: var(--accent-green);">✅ ${escapeHtml(t('models_downloaded_badge'))}</span>
+                            ${activeBadge}
+                        </div>
+                    `;
+                } else {
+                    actionHtml = `
+                        <button class="btn btn-primary" style="padding: 7px 14px; font-size: 12px;" onclick="downloadModel('${rec.key}')">
+                            ⬇️ ${escapeHtml(t('models_download_btn'))} (${rec.size_human})
+                        </button>
+                    `;
+                }
+
+                return `
+                    <div class="model-item">
+                        <div class="model-item-top">
+                            <div class="model-item-title">
+                                <span>${icon}</span>
+                                <span>${escapeHtml(rec.name)}</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">${rec.size_human}</span>
+                                ${typeBadge}
+                            </div>
+                        </div>
+                        <div class="model-item-desc">${escapeHtml(desc)}</div>
+                        <div class="model-item-actions">
+                            ${actionHtml}
+                            <button class="btn btn-secondary" style="padding: 7px 12px; font-size: 12px; margin-left: auto;" onclick="openExternalUrl('${rec.huggingface_url}')">
+                                ${escapeHtml(t('models_huggingface_btn'))}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateDownloadProgressUI(key, info) {
+            const bar = document.getElementById(`progress-bar-${key}`);
+            if (bar) {
+                bar.style.width = `${info.percent || 0}%`;
+            } else {
+                renderRecommendedModels(currentModelsData ? currentModelsData.recommended_models : []);
             }
         }
 
@@ -2026,6 +2534,10 @@
                     document.getElementById('global-gemma-model-path').value = localSettings.gemma_model_path || '';
                     document.getElementById('global-qwen-model-path').value = localSettings.qwen_model_path || '';
                     document.getElementById('global-active-llm-model').value = localSettings.active_llm_model || 'gemma';
+                    const modelsFolderInput = document.getElementById('models-folder-input');
+                    if (modelsFolderInput && localSettings.models_folder) {
+                        modelsFolderInput.value = localSettings.models_folder;
+                    }
 
                     // Load Global Voice Settings
                     const voiceHotkeyValEl = document.getElementById('global-voice-hotkey-input');
@@ -3087,6 +3599,31 @@
                     if (dot) {
                         dot.className = `agent-status-dot ${status}`;
                     }
+                }
+            });
+
+            window.__TAURI__.event.listen('model-download-progress', (event) => {
+                const payload = event.payload;
+                if (!payload || !payload.model_key) return;
+                const key = payload.model_key;
+                if (payload.status === 'downloading') {
+                    activeModelDownloads[key] = {
+                        status: 'downloading',
+                        percent: payload.percent || 0,
+                        speed_mbps: payload.speed_mbps || 0,
+                        downloaded_bytes: payload.downloaded_bytes || 0,
+                        total_bytes: payload.total_bytes || 0
+                    };
+                    updateDownloadProgressUI(key, activeModelDownloads[key]);
+                } else if (payload.status === 'completed') {
+                    delete activeModelDownloads[key];
+                    scanModelsFolder();
+                } else if (payload.status === 'error' || payload.status === 'cancelled') {
+                    delete activeModelDownloads[key];
+                    if (payload.status === 'error' && payload.error) {
+                        alert('Download error: ' + payload.error);
+                    }
+                    scanModelsFolder();
                 }
             });
         }

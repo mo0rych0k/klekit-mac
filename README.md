@@ -12,13 +12,15 @@ KleKit lets you dictate text using your voice or refine selected text on your ma
 
 - 🎙️ **Voice Dictation** — Record voice input with a global hotkey, transcribe offline via Whisper STT, and paste the transcription directly at your cursor.
 - ✍️ **Text Refinement & Agents** — Highlight any text in any app, trigger a custom Agent hotkey, and have the selected local LLM refine, edit, format, or translate it in place.
+- 📁 **Local Models Manager** — Built-in GUI dashboard to scan, download, manage, and switch local Whisper and LiteRT models with one click.
+- 🌍 **Multilingual Interface** — Fully localized in 20 languages (English, Ukrainian, Spanish, French, German, Japanese, Chinese, and more).
 - 🔒 **100% Offline** — All processing happens locally on-device, ensuring complete privacy.
-- ⚡ **macOS Native & Accelerated** — Dynamic compilation and execution tailored to Apple Silicon (Metal/XNNPACK) on macOS.
-- 🧠 **Smart Local Refiner** — **Gemma 4 E4B** or **Qwen3 4B** can fix text, translate, format business messages, structure speech, or create AI-agent prompts.
+- ⚡ **macOS Native & Accelerated** — Dynamic execution tailored to Apple Silicon (Metal/XNNPACK) on macOS with native keystroke synthesis.
+- 🧠 **Smart Local Refiner** — **Gemma 4 (E4B / E2B)** or **Qwen3 4B** can fix text, translate, format business messages, structure speech, or create AI-agent prompts.
 - 🧩 **Five Prompt Presets** — Every agent configuration can use **No Preset**, **Fix Text**, **Business Style**, **Structured Text**, or **Create Prompt**; a Custom Prompt remains available for extra instructions.
 - ⏱️ **Bounded Recording** — Choose a maximum recording length from 1 to 10 minutes in Settings to keep memory use predictable.
 - 📜 **Optional Local History** — Keep voice history on-device, disable it entirely, or set automatic retention in days.
-- 🎯 **Works Anywhere** — Emulates keystrokes to paste text into any active input field (IDE, browser, Slack, Notes…).
+- 🎯 **Works Anywhere** — Emulates native keystrokes (`Cmd+V`) via macOS CoreGraphics to paste text into any active input field (IDE, browser, Slack, Notes…).
 - 💤 **Zero Idle RAM** — Models automatically unload after 60 seconds of inactivity to keep a tiny memory footprint (~20-30 MB).
 
 ---
@@ -77,18 +79,30 @@ pip install litert-lm
 # or ensure ~/Library/Python/3.14/bin/litert-lm or litert-lm in PATH is executable
 ```
 
-### 2. Install the App Bundle
-Copy the built release application to your `/Applications` folder:
+### 2. Install via DMG (Recommended)
+Open the generated DMG file and drag `KleKit.app` into your `Applications` folder:
+- **DMG Path:** `target/release/bundle/dmg/KleKit_0.1.0_aarch64.dmg`
+- To build the DMG yourself:
+  ```bash
+  ./scripts/build_dmg.sh
+  ```
+
+Alternatively, copy the built `.app` bundle directly:
 ```bash
 cp -r target/release/bundle/macos/KleKit.app /Applications/
 ```
-If prompted by macOS Gatekeeper on first launch (or if downloaded as an archive):
+If prompted by macOS Gatekeeper on first launch (or if downloaded as an unsigned build):
 ```bash
 xattr -cr /Applications/KleKit.app
 ```
 
-### 3. Download Models (Stored Externally)
-Models are not bundled in the app, keeping the application lightweight (~13.5 MB). Download your desired models anywhere on your machine (e.g., `~/Models`):
+### 3. Manage Models in the App (New!)
+You can now download and manage models directly from KleKit's GUI:
+1. Open KleKit and click **🧠 Local Models** (Локальні моделі) in the left sidebar.
+2. Select your models directory (defaults to `~/Models`).
+3. The app scans and displays all downloaded `.bin`, `.litertlm`, and `.gguf` weights, along with active statuses.
+4. Click **⬇️ Download** for one-click downloading or **🤗 Hugging Face ↗** to open the model source directly.
+5. Click **Set as Active** to activate a downloaded model immediately without manual path copying.
 
 - **Whisper STT** (for voice dictation):
   ```bash
@@ -107,7 +121,11 @@ Launch **KleKit** from `/Applications` or Spotlight, click the menu bar tray ico
 ### 5. Grant macOS Permissions
 On first launch, macOS will request:
 - 🎙️ **Microphone** — for offline voice recording.
-- ⌨️ **Accessibility** & **Input Monitoring** (`System Settings → Privacy & Security`) — required for global shortcuts (`F8`, `F10`, etc.) and typing/pasting text (`Cmd+V` emulation into active apps).
+- ⌨️ **Accessibility** & **Input Monitoring** (`System Settings → Privacy & Security`) — required for global shortcuts (`F8`, `F10`, etc.) and typing/pasting text (`Cmd+C` / `Cmd+V` emulation into active apps).
+
+> [!TIP]
+> **Troubleshooting Keystroke Paste (`Cmd+V`):**
+> If text is copied to clipboard but not automatically pasted into your active application, open **System Settings → Privacy & Security → Accessibility**, find **KleKit**, and toggle it off and on again. macOS re-validates accessibility permissions whenever an application binary or bundle signature is updated.
 
 
 ---
