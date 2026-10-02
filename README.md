@@ -68,45 +68,47 @@ Unlike the old GGUF-based inference, KleKit now utilizes Google's official **AI 
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Installation & Getting Started
 
-### 1. Clone the repo
+### 1. Install `litert-lm` CLI
+KleKit uses Google AI Edge LiteRT for LLM text refinement:
 ```bash
-git clone https://github.com/mo0rych0k/klekit-mac.git
-cd klekit-mac
+pip install litert-lm
+# or ensure ~/Library/Python/3.14/bin/litert-lm or litert-lm in PATH is executable
 ```
 
-### 2. Download models
+### 2. Install the App Bundle
+Copy the built release application to your `/Applications` folder:
 ```bash
-mkdir -p models
-
-# Full Whisper large-v3-turbo (~1.5 GB)
-curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin \
-  -o models/ggml-large-v3-turbo.bin
-
-# Place the official gemma-4-E4B-it.litertlm model anywhere on your disk.
-# It does not need to be inside this repository.
+cp -r target/release/bundle/macos/KleKit.app /Applications/
+```
+If prompted by macOS Gatekeeper on first launch (or if downloaded as an archive):
+```bash
+xattr -cr /Applications/KleKit.app
 ```
 
-### 3. Build and run
-```bash
-cargo tauri dev
-```
+### 3. Download Models (Stored Externally)
+Models are not bundled in the app, keeping the application lightweight (~13.5 MB). Download your desired models anywhere on your machine (e.g., `~/Models`):
 
-### 4. Select external model files
-In **Settings → Model Files**, click **Choose…** to open the native macOS file picker, or paste a full path manually:
+- **Whisper STT** (for voice dictation):
+  ```bash
+  mkdir -p ~/Models
+  curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin \
+    -o ~/Models/ggml-large-v3-turbo.bin
+  ```
+- **Local LLM** (for text refinement / agents):
+  - Gemma 4 E4B (`.litertlm`) or Qwen3 4B (`.litertlm`).
 
-- **Whisper / Vesper `.bin`** is needed only for voice dictation.
-- **Gemma or Qwen 3 `.litertlm`** is needed only for text refinement or optional voice refinement. Choose the active LLM in Settings; both paths are stored independently.
+### 4. Configure Models in KleKit
+Launch **KleKit** from `/Applications` or Spotlight, click the menu bar tray icon, and open **Settings → Model Files**:
+- Select your **Whisper / Vesper model** (`.bin`).
+- Select your **Gemma** or **Qwen 3 model** (`.litertlm`) and choose your active LLM.
 
-You may configure either model independently. A missing model is reported only when its corresponding feature is used, with a direct explanation of what to configure.
+### 5. Grant macOS Permissions
+On first launch, macOS will request:
+- 🎙️ **Microphone** — for offline voice recording.
+- ⌨️ **Accessibility** & **Input Monitoring** (`System Settings → Privacy & Security`) — required for global shortcuts (`F8`, `F10`, etc.) and typing/pasting text (`Cmd+V` emulation into active apps).
 
-For example, text-only refinement requires the active LLM but not Whisper/Vesper. Voice dictation works without an LLM when **Enable active LLM refinement on dictated voice** is disabled. Invalid paths are rejected when Settings are saved, and the app tells you which file to select.
-
-### 5. Grant permissions
-On first launch, the OS will prompt for:
-- **Microphone** — for audio capture
-- **Accessibility / Input Monitoring** — for global hotkey and clipboard/paste emulation (see [os_integration.rs](src/os_integration.rs))
 
 ---
 
@@ -161,9 +163,11 @@ Whisper is automatically unloaded after **60 seconds** of inactivity. The active
 ```bash
 # Run with hot-reload
 cargo tauri dev
+# or: npx @tauri-apps/cli dev
 
 # Build release bundle
 cargo tauri build
+# or: npx @tauri-apps/cli build
 
 # Run tests
 cargo test
