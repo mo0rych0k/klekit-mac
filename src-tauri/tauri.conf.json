@@ -38,11 +38,7 @@
       "icons/128x128@2x.png",
       "icons/icon.icns"
     ],
-    "resources": [
-      "../models/ggml-large-v3-turbo.bin",
-      "../models/gemma-4-E4B-it.litertlm",
-      "../bin/llm_refiner"
-    ],
+    "resources": ["../bin/llm_refiner"],
     "macOS": {
       "entitlements": "entitlements.plist",
       "infoPlist": "Info.plist",

@@ -103,6 +103,14 @@ mod commands {
     use std::sync::Arc;
     use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
+    fn validate_model_path(label: &str, path: &str) -> Result<(), String> {
+        let path = path.trim();
+        if path.is_empty() || std::path::Path::new(path).is_file() {
+            return Ok(());
+        }
+        Err(format!("{} model file was not found at '{}'. Choose an existing file or clear this field to disable that model.", label, path))
+    }
+
     #[tauri::command]
     pub fn get_settings(state: tauri::State<'_, AppState>) -> AppSettings {
         let lock = state.settings.lock().unwrap();
@@ -116,6 +124,8 @@ mod commands {
         app: tauri::AppHandle,
     ) -> Result<(), String> {
         let mut new_settings = new_settings;
+        validate_model_path("Whisper/Vesper", &new_settings.whisper_model_path)?;
+        validate_model_path("Gemma", &new_settings.gemma_model_path)?;
         for agent in &mut new_settings.agents {
             if agent.hotkey_value.starts_with("MouseButton") {
                 agent.hotkey_type = "Mouse".to_string();
@@ -186,10 +196,18 @@ mod commands {
             }
         }
 
+        let whisper_path_changed = {
+            let lock = state.settings.lock().unwrap();
+            lock.whisper_model_path != new_settings.whisper_model_path
+        };
         // Swap atomic pointer
         {
             let mut lock = state.settings.lock().unwrap();
             *lock = Arc::new(new_settings.clone());
+        }
+        if whisper_path_changed {
+            state.engine.reset_whisper_model();
+            state.engine.log("[models] Whisper/Vesper model selection changed; the old model was unloaded.");
         }
 
         // Rebuild dynamic status bar tray menu
@@ -478,8 +496,6 @@ pub fn run() {
 
     // 1. Initialize our engine — pass shared_settings so the pipeline reads configuration
     let engine = Arc::new(VoiceAssistantEngine::new(
-        "./models/ggml-large-v3-turbo.bin",
-        "./models/gemma-4-E4B-it.litertlm",
         "./bin/llm_refiner",
         Arc::clone(&shared_settings),
     ));
@@ -526,6 +542,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .manage(app_state)
+        .plugin(tauri_plugin_dialog::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(move |_app, shortcut, event| {

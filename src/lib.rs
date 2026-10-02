@@ -32,8 +32,7 @@ pub struct VoiceAssistantEngine {
     state: Arc<Mutex<AppState>>,
     whisper_ctx: Arc<Mutex<Option<Arc<WhisperContext>>>>,
     last_active: Arc<Mutex<Instant>>,
-    whisper_model_path: PathBuf,
-    gemma_model_path: PathBuf,
+    whisper_ctx_path: Arc<Mutex<Option<PathBuf>>>,
     refiner_bin_path: PathBuf,
     on_status_change: Arc<Mutex<Option<StatusCallback>>>,
     on_paste: Arc<Mutex<Option<PasteCallback>>>,
@@ -47,8 +46,6 @@ pub struct VoiceAssistantEngine {
 impl VoiceAssistantEngine {
     /// Creates a new VoiceAssistantEngine with a shared settings reference.
     pub fn new(
-        whisper_model: &str,
-        gemma_model: &str,
         refiner_bin: &str,
         settings: Arc<Mutex<Arc<AppSettings>>>,
     ) -> Self {
@@ -73,8 +70,7 @@ impl VoiceAssistantEngine {
             state: Arc::new(Mutex::new(AppState::Idle)),
             whisper_ctx: Arc::new(Mutex::new(None)),
             last_active: Arc::new(Mutex::new(Instant::now())),
-            whisper_model_path: resolve_path(whisper_model),
-            gemma_model_path: resolve_path(gemma_model),
+            whisper_ctx_path: Arc::new(Mutex::new(None)),
             refiner_bin_path: resolve_path(refiner_bin),
             on_status_change: Arc::new(Mutex::new(None)),
             on_paste: Arc::new(Mutex::new(None)),
@@ -168,20 +164,30 @@ impl VoiceAssistantEngine {
 
     /// Dynamic Whisper context loader. Loads the model on demand if not already in memory.
     fn get_or_load_whisper(&self) -> Result<Arc<WhisperContext>> {
+        let model_path = self.configured_model_path("Whisper/Vesper", &self.settings.lock().unwrap().whisper_model_path)?;
         let mut guard = self.whisper_ctx.lock().unwrap();
-        if let Some(ctx) = &*guard {
-            Ok(Arc::clone(ctx))
-        } else {
-            println!("⏳ Loading Whisper model from disk (dynamic lifecycle)...");
-            let ctx = WhisperContext::new_with_params(
-                self.whisper_model_path.to_str().context("Invalid whisper model path")?,
-                WhisperContextParameters::default(),
-            )
-            .context("Failed to load Whisper model")?;
-            let ctx_arc = Arc::new(ctx);
-            *guard = Some(Arc::clone(&ctx_arc));
-            Ok(ctx_arc)
+        let mut loaded_path = self.whisper_ctx_path.lock().unwrap();
+        if loaded_path.as_ref() == Some(&model_path) {
+            if let Some(ctx) = &*guard {
+                return Ok(Arc::clone(ctx));
+            }
         }
+        *guard = None;
+        println!("⏳ Loading Whisper model from {}...", model_path.display());
+        let ctx = WhisperContext::new_with_params(
+            model_path.to_str().context("Whisper/Vesper model path contains unsupported characters")?,
+            WhisperContextParameters::default(),
+        )
+        .context("Could not load the Whisper/Vesper model. Check that this is a compatible GGML Whisper model file.")?;
+        let ctx_arc = Arc::new(ctx);
+        *guard = Some(Arc::clone(&ctx_arc));
+        *loaded_path = Some(model_path);
+        Ok(ctx_arc)
+    }
+
+    pub fn reset_whisper_model(&self) {
+        *self.whisper_ctx.lock().unwrap() = None;
+        *self.whisper_ctx_path.lock().unwrap() = None;
     }
 
     pub fn start_recording_for_agent(
@@ -323,13 +329,26 @@ impl VoiceAssistantEngine {
     }
 
     fn run_refiner(&self, text: &str, system_prompt: &str, target_language: &str) -> Result<String> {
-        let model_name = self.gemma_model_path.file_name().map(|f| f.to_string_lossy()).unwrap_or_else(|| "Gemma 4".into());
+        let model_path = self.configured_model_path("Gemma", &self.settings.lock().unwrap().gemma_model_path)?;
+        let model_name = model_path.file_name().map(|f| f.to_string_lossy()).unwrap_or_else(|| "Gemma 4".into());
         self.log(format!("🔮 Refining with local {} (target lang: {})...", model_name, target_language));
-        let mut child = std::process::Command::new(&self.refiner_bin_path).arg(&self.gemma_model_path).arg(system_prompt).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).spawn().context("Failed to launch llm_refiner")?;
+        let mut child = std::process::Command::new(&self.refiner_bin_path).arg(&model_path).arg(system_prompt).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).spawn().context("Could not start Gemma. Confirm litert-lm is installed and the selected Gemma model is compatible.")?;
         use std::io::Write;
         child.stdin.take().context("Failed to open subprocess stdin")?.write_all(text.as_bytes()).context("Failed to write to stdin")?;
         let output = child.wait_with_output().context("Error waiting for Gemma 4 subprocess")?;
-        if output.status.success() { Ok(strip_quotes(&String::from_utf8_lossy(&output.stdout))) } else { anyhow::bail!("Gemma subprocess failed: {}", String::from_utf8_lossy(&output.stderr).trim()) }
+        if output.status.success() { Ok(strip_quotes(&String::from_utf8_lossy(&output.stdout))) } else { anyhow::bail!("Gemma processing failed. Check the model file and litert-lm installation. Details: {}", String::from_utf8_lossy(&output.stderr).trim()) }
+    }
+
+    fn configured_model_path(&self, model_name: &str, configured_path: &str) -> Result<PathBuf> {
+        let path = configured_path.trim();
+        if path.is_empty() {
+            anyhow::bail!("{} model is not configured. Open Settings → Model Files and select its model file.", model_name);
+        }
+        let path = PathBuf::from(path);
+        if !path.is_file() {
+            anyhow::bail!("{} model file was not found at '{}'. Open Settings → Model Files and choose an existing file.", model_name, path.display());
+        }
+        Ok(path)
     }
 
     async fn run_processing_pipeline(self: &Arc<Self>, audio_data: Vec<f32>) {

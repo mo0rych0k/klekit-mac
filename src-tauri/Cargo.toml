@@ -23,6 +23,7 @@ serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.11.2", features = ["tray-icon", "image-png"] }
 tauri-plugin-log = "2"
+tauri-plugin-dialog = "2"
 klekit = { path = ".." }
 tokio = { version = "1", features = ["full"] }
 crossbeam-channel = "0.5"
@@ -32,4 +33,3 @@ objc2 = "0.5.2"
 block2 = "0.5.1"
 objc2-app-kit = { version = "0.2.2", features = ["NSEvent", "block2"] }
 arboard = "3.4"
-

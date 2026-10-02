@@ -61,7 +61,7 @@ Unlike the old GGUF-based inference, KleKit now utilizes Google's official **AI 
 - [Rust](https://rustup.rs/) 1.77+
 - [Tauri CLI](https://tauri.app/start/prerequisites/) v2
 - **Google AI Edge `litert-lm` CLI tool** (must be installed globally or at `~/Library/Python/3.14/bin/litert-lm` on macOS).
-- Model files (stored locally, **not** included in this repo):
+- Model files stored anywhere on the local disk (**not bundled in the app**):
   - `models/ggml-large-v3-turbo.bin` — full Whisper large-v3-turbo model ([download](https://huggingface.co/ggerganov/whisper.cpp))
   - `models/gemma-4-E4B-it.litertlm` — Gemma 4 E4B official Google AI Edge model
 
@@ -83,8 +83,8 @@ mkdir -p models
 curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin \
   -o models/ggml-large-v3-turbo.bin
 
-# Place the official gemma-4-E4B-it.litertlm model in your models directory
-# (Download gemma-4-E4B-it.litertlm from Hugging Face's LiteRT community repository)
+# Place the official gemma-4-E4B-it.litertlm model anywhere on your disk.
+# It does not need to be inside this repository.
 ```
 
 ### 3. Build and run
@@ -92,7 +92,17 @@ curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-
 cargo tauri dev
 ```
 
-### 4. Grant permissions
+### 4. Select external model files
+In **Settings → Model Files**, click **Choose…** to open the native macOS file picker, or paste a full path manually:
+
+- **Whisper / Vesper `.bin`** is needed only for voice dictation.
+- **Gemma `.litertlm`** is needed only for text refinement or optional voice refinement.
+
+You may configure either model independently. A missing model is reported only when its corresponding feature is used, with a direct explanation of what to configure.
+
+For example, text-only refinement requires Gemma but not Whisper/Vesper. Voice dictation works without Gemma when **Enable Gemma LLM Refinement on dictated voice** is disabled. Invalid paths are rejected when Settings are saved, and the app tells you which file to select.
+
+### 5. Grant permissions
 On first launch, the OS will prompt for:
 - **Microphone** — for audio capture
 - **Accessibility / Input Monitoring** — for global hotkey and clipboard/paste emulation (see [os_integration.rs](src/os_integration.rs))
@@ -115,6 +125,8 @@ Settings are stored in `~/Library/Application Support/klekit/config.json` on mac
   "voice_max_recording_minutes": 2,
   "save_history": true,
   "history_retention_days": 0,
+  "whisper_model_path": "/Users/you/Models/ggml-large-v3-turbo.bin",
+  "gemma_model_path": "/Users/you/Models/gemma-4-E4B-it.litertlm",
   "agents": []
 }
 ```

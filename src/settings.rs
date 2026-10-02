@@ -41,6 +41,10 @@ pub struct AppSettings {
     pub voice_whisper_prompt: String,
     #[serde(default = "default_voice_max_recording_minutes")]
     pub voice_max_recording_minutes: u8,
+    #[serde(default)]
+    pub whisper_model_path: String,
+    #[serde(default)]
+    pub gemma_model_path: String,
 }
 
 fn default_true() -> bool {
@@ -96,6 +100,8 @@ impl Default for AppSettings {
             voice_stt_language: default_voice_stt_language(),
             voice_whisper_prompt: default_voice_whisper_prompt(),
             voice_max_recording_minutes: default_voice_max_recording_minutes(),
+            whisper_model_path: String::new(),
+            gemma_model_path: String::new(),
         }
     }
 }
@@ -194,6 +200,8 @@ mod tests {
         assert!(settings.save_history);
         assert_eq!(settings.history_retention_days, 0);
         assert_eq!(settings.voice_max_recording_minutes, 2);
+        assert!(settings.whisper_model_path.is_empty());
+        assert!(settings.gemma_model_path.is_empty());
     }
 
     #[test]

@@ -1502,6 +1502,25 @@
                         </div>
                     </div>
 
+                    <div style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+                        <h4 style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--accent-purple); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 4px;">🧠 Model Files</h4>
+                        <p style="margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.45;">Models are external and are not bundled with KleKit. Paste a full file path. Leave Whisper empty for text-only tools; leave Gemma empty when voice dictation does not need refinement.</p>
+                        <div class="form-group">
+                            <label for="global-whisper-model-path">Whisper / Vesper model file (.bin, required only for voice)</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="global-whisper-model-path" placeholder="/Users/you/Models/ggml-large-v3-turbo.bin" onchange="updateModelPath('whisper_model_path', this.value)">
+                                <button type="button" class="btn btn-secondary" onclick="chooseModelFile('whisper_model_path')">Choose…</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="global-gemma-model-path">Gemma model file (.litertlm, required only for text refinement)</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="global-gemma-model-path" placeholder="/Users/you/Models/gemma-4-E4B-it.litertlm" onchange="updateModelPath('gemma_model_path', this.value)">
+                                <button type="button" class="btn btn-secondary" onclick="chooseModelFile('gemma_model_path')">Choose…</button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Card 2: General Preferences -->
                     <div
                         style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
@@ -1776,7 +1795,9 @@
             enable_auto_paste: true,
             enable_sounds: true,
             save_history: true,
-            history_retention_days: 0
+            history_retention_days: 0,
+            whisper_model_path: '',
+            gemma_model_path: ''
         };
         let activeAgentId = null;
         let isRecordingHotkey = false;
@@ -1985,6 +2006,8 @@
                     document.getElementById('global-save-history').checked = localSettings.save_history !== false;
                     document.getElementById('global-history-retention').value = localSettings.history_retention_days || 0;
                     updateVoiceRecordingLimit(localSettings.voice_max_recording_minutes || 2);
+                    document.getElementById('global-whisper-model-path').value = localSettings.whisper_model_path || '';
+                    document.getElementById('global-gemma-model-path').value = localSettings.gemma_model_path || '';
 
                     // Load Global Voice Settings
                     const voiceHotkeyValEl = document.getElementById('global-voice-hotkey-input');
@@ -2096,6 +2119,31 @@
         function updateGlobalVoiceWhisperPrompt(value) {
             localSettings.voice_whisper_prompt = value;
             autoSaveSettings();
+        }
+
+        function updateModelPath(field, value) {
+            localSettings[field] = value.trim();
+            autoSaveSettings();
+        }
+
+        async function chooseModelFile(field) {
+            const dialog = window.__TAURI__ && window.__TAURI__.dialog;
+            if (!dialog || !dialog.open) {
+                alert('The system file picker is unavailable. Paste the full model path instead.');
+                return;
+            }
+            const isWhisper = field === 'whisper_model_path';
+            const selected = await dialog.open({
+                multiple: false,
+                directory: false,
+                title: isWhisper ? 'Select Whisper / Vesper model' : 'Select Gemma model',
+                filters: [{ name: isWhisper ? 'Whisper model' : 'Gemma model', extensions: isWhisper ? ['bin'] : ['litertlm'] }]
+            });
+            if (typeof selected === 'string') {
+                const input = document.getElementById(isWhisper ? 'global-whisper-model-path' : 'global-gemma-model-path');
+                input.value = selected;
+                updateModelPath(field, selected);
+            }
         }
 
         function updateVoiceRecordingLimit(minutes) {
