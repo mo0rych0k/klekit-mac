@@ -2104,7 +2104,7 @@ dependencies = [
 
 [[package]]
 name = "klekit"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "arboard",
@@ -2121,7 +2121,7 @@ dependencies = [
 
 [[package]]
 name = "klekit-tauri"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "arboard",
  "block2 0.5.1",

@@ -1,6 +1,6 @@
 [package]
 name = "klekit-tauri"
-version = "0.1.0"
+version = "0.2.0"
 description = "KleKit — offline voice-to-text assistant for macOS"
 authors = ["mo0rych0k"]
 license = "MIT"

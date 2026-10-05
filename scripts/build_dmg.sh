@@ -5,7 +5,9 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_PATH="$PROJECT_ROOT/target/release/bundle/macos/KleKit.app"
 DMG_DIR="$PROJECT_ROOT/target/release/bundle/dmg"
-DMG_PATH="$DMG_DIR/KleKit_0.1.0_aarch64.dmg"
+VERSION=$(grep '"version"' "$PROJECT_ROOT/src-tauri/tauri.conf.json" | head -n1 | cut -d '"' -f 4)
+ARCH=$(uname -m)
+DMG_PATH="$DMG_DIR/KleKit_${VERSION}_${ARCH}.dmg"
 VOLUME_NAME="KleKit"
 ICON_PATH="$PROJECT_ROOT/src-tauri/icons/icon.icns"
 

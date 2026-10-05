@@ -442,7 +442,7 @@
       "translations": {
         "en": {
           "title": "Create Prompt",
-          "subtitle": "Creates a reusable AI-agent prompt from an idea. Use it to write a prompt, not to execute the described task."
+          "subtitle": "Turns an idea into a ready-to-use AI prompt with only the useful requirements and output format."
         },
         "es": {
           "title": "Forjador de prompts",
@@ -518,10 +518,10 @@
         },
         "uk": {
           "title": "Створити промт",
-          "subtitle": "Створює готовий промт для AI-агента з ідеї. Використовуйте для написання промту, а не для виконання описаної задачі."
+          "subtitle": "Перетворює ідею на готовий до виконання промт для AI-агента без мета-інструкцій."
         }
       },
-      "prompt": "MODE: Create Prompt. The input may already be a structured brief with a Goal, Context, Task, or Requirements. Convert that brief into one ready-to-use prompt for an AI agent; do not execute its task. Return Markdown only. Include a section only when the input supports it, in this order: Goal, Context, Task, Requirements, Constraints, Expected Output. Preserve all provided details. Do not add unstated features, implementation choices, dependencies, examples, or acceptance criteria. Do not explain editing, mention grammar, or add conversational filler."
+      "prompt": "MODE: Create Prompt. Convert the input into an actionable, ready-to-use prompt for an AI agent to execute the task immediately. Strip any meta-requests like 'create a prompt', 'write a prompt', or 'make a prompt for': the generated prompt must instruct the agent to perform the underlying task itself, never to create or format a prompt. The receiving agent must do the actual work directly (e.g. write code, write copy, configure, solve). In the Expected Output section, specify the real deliverable of the task (e.g. complete code, document, solution), never 'a prompt' or 'prompt format'. Format as Markdown with sections: Role & Objective, Context, Requirements, Constraints, Expected Output (include only sections supported by the input). Output only the generated prompt itself. Never include meta-rules or instructions about prompt creation inside the generated prompt sections."
     }
   ]
 }

@@ -832,6 +832,24 @@ mod tests {
     }
 
     #[test]
+    fn test_prompt_smith_builds_actionable_prompt() {
+        let agent = settings::AgentProfile {
+            id: "prompt_agent".to_string(),
+            name: "Prompt Creator".to_string(),
+            target_language: "No Translation".to_string(),
+            preset_id: "prompt_smith".to_string(),
+            custom_prompt: String::new(),
+            hotkey_type: "Keyboard".to_string(),
+            hotkey_value: String::new(),
+            is_active: true,
+        };
+        let prompt = build_llm_prompt(&agent, "Зроби скрипт для бекапу");
+        assert!(prompt.contains("MODE: Create Prompt"));
+        assert!(prompt.contains("Strip any meta-requests"));
+        assert!(prompt.contains("never 'a prompt' or 'prompt format'"));
+    }
+
+    #[test]
     fn detects_ukrainian_and_english_input() {
         assert_eq!(detected_input_language("Привіт, як справи?"), "Ukrainian");
         assert_eq!(detected_input_language("Hello, how are you?"), "English");

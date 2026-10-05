@@ -81,7 +81,7 @@ pip install litert-lm
 
 ### 2. Install via DMG (Recommended)
 Open the generated DMG file and drag `KleKit.app` into your `Applications` folder:
-- **DMG Path:** `target/release/bundle/dmg/KleKit_0.1.0_aarch64.dmg`
+- **DMG Path:** `target/release/bundle/dmg/KleKit_0.2.0_aarch64.dmg`
 - To build the DMG yourself:
   ```bash
   ./scripts/build_dmg.sh
