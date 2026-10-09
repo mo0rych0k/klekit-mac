@@ -135,6 +135,50 @@ mod commands {
         }
     }
 
+    pub fn reconcile_model_path(
+        label: &str,
+        path: &mut String,
+        models_folder: &std::path::Path,
+        engine: Option<&klekit::VoiceAssistantEngine>,
+    ) {
+        let trimmed = path.trim();
+        if trimmed.is_empty() {
+            return;
+        }
+
+        // 1. If the path as configured exists, keep it.
+        if std::path::Path::new(trimmed).is_file() || expand_tilde(trimmed).is_file() {
+            return;
+        }
+
+        // 2. If the configured path does not exist, check if a file with the same name
+        // exists in the target models folder (e.g. folder was relocated or switched).
+        if let Some(file_name) = std::path::Path::new(trimmed).file_name() {
+            let candidate = models_folder.join(file_name);
+            if candidate.is_file() {
+                let candidate_str = candidate.to_string_lossy().to_string();
+                if let Some(eng) = engine {
+                    eng.log(format!(
+                        "[models] Auto-relinked {} model from missing path '{}' to existing file '{}'",
+                        label, trimmed, candidate_str
+                    ));
+                }
+                *path = candidate_str;
+                return;
+            }
+        }
+
+        // 3. The file does not exist at the configured path AND is not in the models folder.
+        // It was deleted or moved. Clear the stale path so it doesn't block settings or cause errors.
+        if let Some(eng) = engine {
+            eng.log(format!(
+                "[models] Configured {} model file at '{}' does not exist; cleared stale model path.",
+                label, trimmed
+            ));
+        }
+        *path = String::new();
+    }
+
     fn validate_model_path(label: &str, path: &str) -> Result<(), String> {
         let path = path.trim();
         if path.is_empty() || std::path::Path::new(path).is_file() || expand_tilde(path).is_file() {
@@ -194,6 +238,21 @@ mod commands {
         app: tauri::AppHandle,
     ) -> Result<(), String> {
         let mut new_settings = new_settings;
+        let models_folder_path = {
+            let raw = if !new_settings.models_folder.trim().is_empty() {
+                new_settings.models_folder.clone()
+            } else if let Ok(home) = std::env::var("HOME") {
+                format!("{}/Models", home)
+            } else {
+                "models".to_string()
+            };
+            expand_tilde(&raw)
+        };
+
+        reconcile_model_path("Whisper/Vesper", &mut new_settings.whisper_model_path, &models_folder_path, Some(&state.engine));
+        reconcile_model_path("Gemma", &mut new_settings.gemma_model_path, &models_folder_path, Some(&state.engine));
+        reconcile_model_path("Qwen 3", &mut new_settings.qwen_model_path, &models_folder_path, Some(&state.engine));
+
         validate_model_path("Whisper/Vesper", &new_settings.whisper_model_path)?;
         validate_model_path("Gemma", &new_settings.gemma_model_path)?;
         validate_model_path("Qwen 3", &new_settings.qwen_model_path)?;
@@ -407,6 +466,21 @@ mod commands {
         };
 
         let folder_exists = folder_path_buf.is_dir();
+        let (mut active_whisper, mut active_gemma, mut active_qwen, active_llm) = {
+            let lock = state.settings.lock().unwrap();
+            (
+                lock.whisper_model_path.clone(),
+                lock.gemma_model_path.clone(),
+                lock.qwen_model_path.clone(),
+                lock.active_llm_model.clone(),
+            )
+        };
+
+        // Reconcile active paths against the scanned folder (re-link if moved here, or clear stale references if deleted)
+        reconcile_model_path("Whisper/Vesper", &mut active_whisper, &folder_path_buf, None);
+        reconcile_model_path("Gemma", &mut active_gemma, &folder_path_buf, None);
+        reconcile_model_path("Qwen 3", &mut active_qwen, &folder_path_buf, None);
+
         let mut detected_files = Vec::new();
 
         if folder_exists {
@@ -430,12 +504,9 @@ mod commands {
                             };
 
                             let full_path_str = path.to_string_lossy().to_string();
-                            let is_active = {
-                                let lock = state.settings.lock().unwrap();
-                                lock.whisper_model_path == full_path_str
-                                    || lock.gemma_model_path == full_path_str
-                                    || lock.qwen_model_path == full_path_str
-                            };
+                            let is_active = active_whisper == full_path_str
+                                || active_gemma == full_path_str
+                                || active_qwen == full_path_str;
 
                             detected_files.push(ModelFileInfo {
                                 file_name,
@@ -452,16 +523,6 @@ mod commands {
         }
 
         detected_files.sort_by(|a, b| a.file_name.cmp(&b.file_name));
-
-        let (active_whisper, active_gemma, active_qwen, active_llm) = {
-            let lock = state.settings.lock().unwrap();
-            (
-                lock.whisper_model_path.clone(),
-                lock.gemma_model_path.clone(),
-                lock.qwen_model_path.clone(),
-                lock.active_llm_model.clone(),
-            )
-        };
 
         let mut rec_models = vec![
             RecommendedModelInfo {
@@ -587,8 +648,12 @@ mod commands {
             other => return Err(format!("Unknown model type: {}", other)),
         }
 
-        save_settings(settings.clone(), state, app)?;
-        Ok(settings)
+        save_settings(settings, state.clone(), app)?;
+        let updated = {
+            let lock = state.settings.lock().unwrap();
+            (**lock).clone()
+        };
+        Ok(updated)
     }
 
     #[tauri::command]
@@ -978,7 +1043,32 @@ fn run_os_refinement(engine: Arc<VoiceAssistantEngine>, agent_id: String) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Load settings from disk
-    let initial_settings = AppSettings::load();
+    let mut initial_settings = AppSettings::load();
+    let initial_models_folder = {
+        let raw = if !initial_settings.models_folder.trim().is_empty() {
+            initial_settings.models_folder.clone()
+        } else if let Ok(home) = std::env::var("HOME") {
+            format!("{}/Models", home)
+        } else {
+            "models".to_string()
+        };
+        commands::expand_tilde(&raw)
+    };
+    let mut startup_changed = false;
+    for (label, path) in [
+        ("Whisper/Vesper", &mut initial_settings.whisper_model_path),
+        ("Gemma", &mut initial_settings.gemma_model_path),
+        ("Qwen 3", &mut initial_settings.qwen_model_path),
+    ] {
+        let before = path.clone();
+        commands::reconcile_model_path(label, path, &initial_models_folder, None);
+        if *path != before {
+            startup_changed = true;
+        }
+    }
+    if startup_changed {
+        let _ = initial_settings.save();
+    }
     let shared_settings: Arc<Mutex<Arc<AppSettings>>> =
         Arc::new(Mutex::new(Arc::new(initial_settings)));
 
@@ -1393,4 +1483,71 @@ fn rebuild_tray_menu(app_handle: &tauri::AppHandle) -> Result<(), tauri::Error> 
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::commands::reconcile_model_path;
+    use std::fs::File;
+    use std::path::PathBuf;
+
+    fn make_test_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("klekit_test_{}_{}", name, std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn test_reconcile_model_path_existing_file() {
+        let temp_dir = make_test_dir("existing");
+        let file_path = temp_dir.join("model.bin");
+        File::create(&file_path).unwrap();
+
+        let mut path_str = file_path.to_string_lossy().to_string();
+        let models_folder = temp_dir.join("other_folder");
+
+        reconcile_model_path("Test", &mut path_str, &models_folder, None);
+        assert_eq!(path_str, file_path.to_string_lossy().to_string());
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_reconcile_model_path_relinks_to_models_folder() {
+        let temp_dir = make_test_dir("relink");
+        let new_models_folder = temp_dir.join("new_models");
+        std::fs::create_dir_all(&new_models_folder).unwrap();
+
+        let relinked_file = new_models_folder.join("ggml-large-v3-turbo.bin");
+        File::create(&relinked_file).unwrap();
+
+        // Old path in a deleted directory
+        let mut old_path = "/non_existent_folder_xyz/ggml-large-v3-turbo.bin".to_string();
+
+        reconcile_model_path("Whisper/Vesper", &mut old_path, &new_models_folder, None);
+        assert_eq!(old_path, relinked_file.to_string_lossy().to_string());
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_reconcile_model_path_clears_stale_deleted_file() {
+        let temp_dir = make_test_dir("clear");
+        let models_folder = temp_dir.join("empty_folder");
+        std::fs::create_dir_all(&models_folder).unwrap();
+
+        let mut deleted_path = "/non_existent_folder_xyz/deleted_model.bin".to_string();
+
+        reconcile_model_path("Whisper/Vesper", &mut deleted_path, &models_folder, None);
+        assert!(deleted_path.is_empty());
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_reconcile_model_path_empty_stays_empty() {
+        let temp_dir = make_test_dir("empty");
+        let mut empty_path = "".to_string();
+
+        reconcile_model_path("Whisper/Vesper", &mut empty_path, &temp_dir, None);
+        assert!(empty_path.is_empty());
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
 }

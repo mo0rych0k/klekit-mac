@@ -1874,7 +1874,7 @@
                 style="margin: 0; font-size: 20px; font-weight: 800; font-family: 'Outfit', sans-serif; background: linear-gradient(135deg, #a855f7, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
                 KleKit</h4>
             <span
-                style="font-size: 11px; color: var(--text-secondary); background: rgba(255, 255, 255, 0.08); padding: 2px 8px; border-radius: 12px; font-family: monospace; font-weight: 600;">v0.2.0</span>
+                style="font-size: 11px; color: var(--text-secondary); background: rgba(255, 255, 255, 0.08); padding: 2px 8px; border-radius: 12px; font-family: monospace; font-weight: 600;">v0.2.1</span>
 
             <p
                 style="font-size: 12px; line-height: 1.6; color: var(--text-secondary); text-align: justify; margin: 8px 0; word-break: break-word;">
@@ -2275,13 +2275,33 @@
                 title: 'Select Models Folder'
             });
             if (typeof selected === 'string' && selected.trim()) {
+                const folder = selected.trim();
                 const folderInput = document.getElementById('models-folder-input');
-                if (folderInput) folderInput.value = selected;
+                if (folderInput) folderInput.value = folder;
                 if (localSettings) {
-                    localSettings.models_folder = selected;
-                    autoSaveSettings();
+                    localSettings.models_folder = folder;
+                    if (autoSaveTimeout) {
+                        clearTimeout(autoSaveTimeout);
+                        autoSaveTimeout = null;
+                    }
+                    try {
+                        await invokeCommand('save_settings', { newSettings: localSettings });
+                        const updated = await invokeCommand('get_settings');
+                        if (updated) {
+                            localSettings = updated;
+                            const wInput = document.getElementById('global-whisper-model-path');
+                            if (wInput) wInput.value = localSettings.whisper_model_path || '';
+                            const gInput = document.getElementById('global-gemma-model-path');
+                            if (gInput) gInput.value = localSettings.gemma_model_path || '';
+                            const qInput = document.getElementById('global-qwen-model-path');
+                            if (qInput) qInput.value = localSettings.qwen_model_path || '';
+                        }
+                    } catch (e) {
+                        console.error('Failed to save models folder:', e);
+                        showSaveFeedback('❌ ' + t('save_failed') + ': ' + e, true);
+                    }
                 }
-                await scanModelsFolder(selected);
+                await scanModelsFolder(folder);
             }
         }
 
@@ -2301,19 +2321,15 @@
                 });
                 if (updatedSettings) {
                     localSettings = updatedSettings;
-                    if (modelType === 'whisper') {
-                        const wInput = document.getElementById('global-whisper-model-path');
-                        if (wInput) wInput.value = filePath;
-                    } else if (modelType === 'gemma') {
-                        const gInput = document.getElementById('global-gemma-model-path');
-                        if (gInput) gInput.value = filePath;
-                        const llmSelect = document.getElementById('global-active-llm-model');
-                        if (llmSelect) llmSelect.value = 'gemma';
-                    } else if (modelType === 'qwen') {
-                        const qInput = document.getElementById('global-qwen-model-path');
-                        if (qInput) qInput.value = filePath;
-                        const llmSelect = document.getElementById('global-active-llm-model');
-                        if (llmSelect) llmSelect.value = 'qwen';
+                    const wInput = document.getElementById('global-whisper-model-path');
+                    if (wInput) wInput.value = localSettings.whisper_model_path || '';
+                    const gInput = document.getElementById('global-gemma-model-path');
+                    if (gInput) gInput.value = localSettings.gemma_model_path || '';
+                    const qInput = document.getElementById('global-qwen-model-path');
+                    if (qInput) qInput.value = localSettings.qwen_model_path || '';
+                    const llmSelect = document.getElementById('global-active-llm-model');
+                    if (llmSelect && localSettings.active_llm_model) {
+                        llmSelect.value = localSettings.active_llm_model;
                     }
                 }
                 await scanModelsFolder();
